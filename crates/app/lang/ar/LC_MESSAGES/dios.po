@@ -91,6 +91,9 @@ msgstr "الحجم"
 msgid "Status"
 msgstr "الحالة"
 
+msgid "Progress"
+msgstr "التقدم"
+
 msgid "Time left"
 msgstr "الوقت المتبقي"
 
@@ -582,6 +585,9 @@ msgstr "اسم الملف (يظهر دائماً)"
 
 msgid "Q (queue number)"
 msgstr "ق (رقم قائمة الانتظار)"
+
+msgid "Progress bar"
+msgstr "شريط التقدم"
 
 msgid "Reset"
 msgstr "استعادة الافتراضي"

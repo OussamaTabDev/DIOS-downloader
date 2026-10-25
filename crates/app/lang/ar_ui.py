@@ -452,4 +452,6 @@ AR = {
     "none (the theme's colors)": "بدون (ألوان المظهر)",
     "Picture visibility": "وضوح الصورة",
     "Hide": "إخفاء",
+    "Progress": "التقدم",
+    "Progress bar": "شريط التقدم",
 }

@@ -1705,6 +1705,7 @@ pub(crate) fn cols_from(s: &Settings) -> Cols {
         q: c("q"),
         size: c("size"),
         status: c("status"),
+        progress: c("progress"),
         eta: c("eta"),
         speed: c("speed"),
         last: c("last"),
@@ -2481,6 +2482,11 @@ pub(crate) fn refresh(ui: &Ui) {
         "name" => views.sort_by_key(|v| v.file_name.to_lowercase()),
         "size" => views.sort_by_key(|v| v.total_size.unwrap_or(v.downloaded)),
         "status" => views.sort_by_key(|v| (order(v), v.id)),
+        "progress" => views.sort_by(|a, b| {
+            let pa = a.total_size.map(|t| a.downloaded as f64 / t as f64).unwrap_or(0.0);
+            let pb = b.total_size.map(|t| b.downloaded as f64 / t as f64).unwrap_or(0.0);
+            pa.partial_cmp(&pb).unwrap_or(std::cmp::Ordering::Equal).then(a.id.cmp(&b.id))
+        }),
         "eta" => views.sort_by_key(|v| (v.eta_secs.unwrap_or(u64::MAX), v.id)),
         "speed" => views.sort_by_key(|v| (v.speed as u64, v.id)),
         "desc" => views.sort_by_key(|v| (v.description.clone().unwrap_or_default().to_lowercase(), v.id)),

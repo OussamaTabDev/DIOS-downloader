@@ -1,9 +1,11 @@
 // DIOS Downloader – user interface (Slint)
-// Classic download-manager layout: menu bar, big icon toolbar, category and
-// queue tree, detailed list, one progress window per download. Nine themes.
+// Classic download-manager layout (IDM style): menu bar, big icon toolbar with
+// a primary "Add URL" action, category and queue tree, detailed list with a
+// progress bar column and status pills, one progress window per download.
+// Nine themes; the DIOS violet (#8800ff) is the brand accent.
 
 import { Button, LineEdit, SpinBox, CheckBox, ComboBox, ListView, TabWidget, TextEdit, Palette } from "std-widgets.slint";
-import { DownloadRow, QueueRow, SegView, Cols, ColDef, CatRow, PairRow, LinkRow, Theme, ThemedWindow, P, Icon, G, TypeIcon, BigTypeIcon, ToolBtn, ToolSeparator, TreeItem, HeaderCell, Cell, MenuEntry, MenuSep, MenuLabel, Glyph } from "common.slint";
+import { DownloadRow, QueueRow, SegView, Cols, ColDef, CatRow, PairRow, LinkRow, Theme, ThemedWindow, P, Icon, G, TypeIcon, BigTypeIcon, ToolBtn, ToolSeparator, TreeItem, HeaderCell, Cell, MenuEntry, MenuSep, MenuLabel, Glyph, AccentButton } from "common.slint";
 export { DownloadRow, QueueRow, SegView, Cols, ColDef, CatRow, PairRow, LinkRow, Theme }
 export { BrowserRow } from "dialogs.slint";
 export { ColumnsDialog, CategoryDialog, FindDialog, PropertiesDialog, DuplicateDialog, CountdownDialog, SchedulerDialog, GrabberDialog, TipDialog, RefreshDialog, SettingsDialog, PlaylistDialog, BrowserDialog, AboutDialog, UpdateDialog } from "dialogs.slint";
@@ -14,6 +16,8 @@ component DownloadItem inherits Rectangle {
     in property <[QueueRow]> queues;
     in property <Cols> cols;
     in property <[ColDef]> columns;
+    // odd rows get a faint stripe (zebra), like a ledger
+    in property <bool> zebra;
     // how many downloads are selected (the menu then works on all of them)
     in property <int> sel-count;
     // click with Ctrl / Shift
@@ -29,8 +33,8 @@ component DownloadItem inherits Rectangle {
     // dragging a finished file out of the program (onto the desktop, a folder…)
     callback drag-out();
     property <bool> dragged-out;
-    height: max(24px, 24px * Theme.font-scale);
-    background: root.selected ? Theme.select : ta.has-hover ? Theme.hover : transparent;
+    height: max(26px, 26px * Theme.font-scale);
+    background: root.selected ? Theme.select : ta.has-hover ? Theme.hover : root.zebra ? Theme.grid : transparent;
     border-width: root.selected ? 1px : 0px;
     border-color: Theme.select-line;
     ta := TouchArea {
@@ -71,6 +75,18 @@ component DownloadItem inherits Rectangle {
     property <bool> done: root.data.state == 3;
     property <bool> can-resume: root.data.state == 2 || root.data.state == 4;
     property <bool> can-stop: root.data.state == 0 || root.data.state == 1;
+    // colors of the status pill: downloading violet, paused amber, done green,
+    // failed red, queued neutral
+    property <color> pill-bg: root.data.state == 1 ? Theme.accent.transparentize(0.86)
+        : root.data.state == 2 ? #e08a0055
+        : root.data.state == 3 ? Theme.ok.transparentize(0.86)
+        : root.data.state == 4 ? Theme.err.transparentize(0.86)
+        : Theme.muted.transparentize(0.88);
+    property <color> pill-fg: root.data.state == 1 ? Theme.accent
+        : root.data.state == 2 ? (Theme.dark ? #ffb84d : #b06f00)
+        : root.data.state == 3 ? Theme.ok
+        : root.data.state == 4 ? Theme.err
+        : Theme.muted;
     menu := PopupWindow {
         x: root.menu-x;
         y: root.menu-y;
@@ -247,33 +263,57 @@ component DownloadItem inherits Rectangle {
                 text: root.data.size;
                 horizontal-alignment: right;
             }
-            if c.key == "status": Rectangle {
-                // thin progress line under the status, for running downloads
-                if root.data.state == 1 || (root.data.state == 2 && root.data.progress > 0): Rectangle {
-                    x: 10px;
-                    y: parent.height - 5px;
-                    width: parent.width - 20px;
-                    height: 3px;
-                    border-radius: 1.5px;
-                    background: Theme.bar-bg;
+            if c.key == "progress": Rectangle {
+                // the IDM-style progress bar of the download
+                HorizontalLayout {
+                    padding-left: 7px;
+                    padding-right: 9px;
                     Rectangle {
-                        x: 0;
-                        width: parent.width * root.data.progress;
-                        height: parent.height;
-                        border-radius: 1.5px;
-                        background: root.data.state == 1 ? Theme.accent : Theme.warn;
-                        animate width {
-                            duration: 250ms;
-                            easing: linear;
+                        horizontal-stretch: 1;
+                        y: (parent.height - 10px) / 2;
+                        height: 10px;
+                        border-radius: 5px;
+                        background: Theme.bar-bg;
+                        clip: true;
+                        Rectangle {
+                            x: 0;
+                            width: parent.width * Math.min(1.0, Math.max(0.0, root.data.progress));
+                            height: parent.height;
+                            border-radius: 5px;
+                            background: root.done ? Theme.ok
+                                : root.data.state == 4 ? Theme.err
+                                : root.data.state == 2 ? Theme.warn
+                                : Theme.accent;
+                            animate width {
+                                duration: 250ms;
+                                easing: linear;
+                            }
                         }
                     }
                 }
-                Cell {
-                    width: parent.width;
-                    height: parent.height - 2px;
-                    text: root.data.status;
-                    horizontal-alignment: center;
-                    color: root.data.state == 3 ? Theme.ok : root.data.state == 4 ? Theme.err : root.data.state == 1 ? Theme.accent : Theme.text;
+            }
+            if c.key == "status": HorizontalLayout {
+                // the state as a small colored pill, easy to scan
+                padding-left: 5px;
+                padding-right: 5px;
+                Rectangle {
+                    width: min(parent.width - 2px, status-tx.preferred-width + 18px);
+                    height: 18px;
+                    y: (parent.height - 18px) / 2;
+                    border-radius: 9px;
+                    background: root.pill-bg;
+                    status-tx := Text {
+                        x: 9px;
+                        width: parent.width - 18px;
+                        height: parent.height;
+                        text: root.data.status;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        font-size: 11px * Theme.font-scale;
+                        font-weight: 600;
+                        color: root.pill-fg;
+                        overflow: elide;
+                    }
                 }
             }
             if c.key == "eta": Cell {
@@ -483,7 +523,7 @@ export component MainWindow inherits ThemedWindow {
     in property <bool> sort-desc: true;
     // Downloads > When all downloads finish: 0 nothing, 1 shut down, 2 sleep, 3 exit, 4 hibernate
     in property <int> all-done: 0;
-    in property <Cols> cols: { q: true, size: true, status: true, eta: true, speed: true, last: true, desc: true };
+    in property <Cols> cols: { q: true, size: true, status: true, progress: true, eta: true, speed: true, last: true, desc: true };
     in property <bool> toolbar-small;
     in property <string> language: "en";
     in-out property <bool> open-all: true;
@@ -527,6 +567,7 @@ export component MainWindow inherits ThemedWindow {
         if (k == "q") { return @tr("Q"); }
         if (k == "size") { return @tr("Size"); }
         if (k == "status") { return @tr("Status"); }
+        if (k == "progress") { return @tr("Progress"); }
         if (k == "eta") { return @tr("Time left"); }
         if (k == "speed") { return @tr("Transfer rate"); }
         if (k == "last") { return @tr("Last Try Date"); }
@@ -1235,6 +1276,7 @@ export component MainWindow inherits ThemedWindow {
                         icon: "add";
                         text: @tr("Add URL");
                         small: root.toolbar-small;
+                        primary: true;
                         clicked => {
                             root.add-url();
                         }
@@ -1322,7 +1364,6 @@ export component MainWindow inherits ThemedWindow {
                         icon: "startqueue";
                         text: @tr("Start Queue");
                         small: root.toolbar-small;
-                        width: root.toolbar-small ? 34px : 62px;
                         clicked => {
                             root.qmenu-start = true;
                             root.qmenu-x = self.x;
@@ -1333,7 +1374,6 @@ export component MainWindow inherits ThemedWindow {
                         icon: "stopqueue";
                         text: @tr("Stop Queue");
                         small: root.toolbar-small;
-                        width: root.toolbar-small ? 34px : 62px;
                         clicked => {
                             root.qmenu-start = false;
                             root.qmenu-x = self.x;
@@ -1363,7 +1403,7 @@ export component MainWindow inherits ThemedWindow {
                     VerticalLayout {
                         alignment: center;
                         LineEdit {
-                            width: 96px;
+                            width: 150px;
                             placeholder-text: @tr("Filter the list…");
                             text <=> root.search;
                             edited(t) => {
@@ -1544,7 +1584,7 @@ export component MainWindow inherits ThemedWindow {
                         HorizontalLayout {
                             padding: 4px;
                             spacing: 4px;
-                            Button {
+                            AccentButton {
                                 text: @tr("New queue");
                                 horizontal-stretch: 1;
                                 clicked => {
@@ -1619,12 +1659,13 @@ export component MainWindow inherits ThemedWindow {
                         }
                         lv := ListView {
                             vertical-stretch: 1;
-                            for r in root.rows: DownloadItem {
+                            for r[i] in root.rows: DownloadItem {
                                 data: r;
                                 queues: root.queues;
                                 cols: root.cols;
                                 columns: root.columns;
                                 selected: r.sel;
+                                zebra: Math.mod(i, 2) == 1;
                                 sel-count: root.sel-count;
                                 pick(ctrl, shift) => {
                                     root.row-clicked(r.id, ctrl, shift);
@@ -1954,10 +1995,9 @@ export component AddDialog inherits ThemedWindow {
                     root.later();
                 }
             }
-            Button {
+            AccentButton {
                 text: @tr("Start Download");
-                primary: true;
-                enabled: root.url != "";
+                                enabled: root.url != "";
                 clicked => {
                     root.start-now();
                 }
@@ -2259,10 +2299,9 @@ export component BatchDialog inherits ThemedWindow {
                 vertical-alignment: center;
                 horizontal-stretch: 1;
             }
-            Button {
+            AccentButton {
                 text: @tr("Add");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.ok();
                 }
             }
@@ -2587,7 +2626,8 @@ export component DetailsDialog inherits ThemedWindow {
                 y: 1px;
                 height: parent.height - 2px;
                 width: (parent.width - 2px) * root.progress;
-                background: @linear-gradient(180deg, #4fd06a 0%, #1f9d3e 100%);
+                // running: the DIOS violet; finished: green, like the list
+                background: root.state == 3 ? Theme.ok : Theme.accent;
                 animate width {
                     duration: 100ms;
                     easing: linear;
@@ -2614,10 +2654,9 @@ export component DetailsDialog inherits ThemedWindow {
                     root.pause();
                 }
             }
-            if root.state == 2 || root.state == 4: Button {
+            if root.state == 2 || root.state == 4: AccentButton {
                 text: @tr("Resume");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.resume();
                 }
             }
@@ -2805,10 +2844,9 @@ export component CompleteDialog inherits ThemedWindow {
             Rectangle {
                 horizontal-stretch: 1;
             }
-            Button {
+            AccentButton {
                 text: @tr("Open");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.open-file();
                 }
             }

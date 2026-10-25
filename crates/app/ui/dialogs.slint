@@ -4,7 +4,7 @@
 // links, Tip of the day and Refresh download address.
 
 import { Button, LineEdit, SpinBox, CheckBox, ComboBox, ListView, TextEdit, ScrollView, AboutSlint, Slider } from "std-widgets.slint";
-import { Cols, PairRow, LinkRow, QueueRow, DownloadRow, Theme, ThemedWindow, TypeIcon, BigTypeIcon, HeaderCell, Cell, Glyph } from "common.slint";
+import { Cols, PairRow, LinkRow, QueueRow, DownloadRow, Theme, ThemedWindow, TypeIcon, BigTypeIcon, HeaderCell, Cell, Glyph, AccentButton } from "common.slint";
 
 // ------------------------------------------------------------------ small parts
 
@@ -229,6 +229,13 @@ export component ColumnsDialog inherits ThemedWindow {
             }
         }
         CheckBox {
+            text: @tr("Progress bar");
+            checked: root.cols.progress;
+            toggled => {
+                root.cols.progress = self.checked;
+            }
+        }
+        CheckBox {
             text: @tr("Time left");
             checked: root.cols.eta;
             toggled => {
@@ -296,10 +303,9 @@ export component ColumnsDialog inherits ThemedWindow {
             Rectangle {
                 horizontal-stretch: 1;
             }
-            Button {
+            AccentButton {
                 text: @tr("OK");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.save();
                 }
             }
@@ -395,10 +401,9 @@ export component CategoryDialog inherits ThemedWindow {
                 vertical-alignment: center;
                 horizontal-stretch: 1;
             }
-            Button {
+            AccentButton {
                 text: @tr("OK");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.save();
                 }
             }
@@ -479,10 +484,9 @@ export component FindDialog inherits ThemedWindow {
                 vertical-alignment: center;
                 horizontal-stretch: 1;
             }
-            Button {
+            AccentButton {
                 text: @tr("Find Next");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.find-next();
                 }
             }
@@ -687,10 +691,9 @@ export component PropertiesDialog inherits ThemedWindow {
                 horizontal-stretch: 1;
                 wrap: word-wrap;
             }
-            Button {
+            AccentButton {
                 text: @tr("OK");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.save();
                 }
             }
@@ -761,10 +764,9 @@ export component DuplicateDialog inherits ThemedWindow {
         HorizontalLayout {
             alignment: end;
             spacing: 8px;
-            Button {
+            AccentButton {
                 text: @tr("OK");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.ok();
                 }
             }
@@ -828,10 +830,9 @@ export component CountdownDialog inherits ThemedWindow {
                     root.now();
                 }
             }
-            Button {
+            AccentButton {
                 text: @tr("Stop");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.stop();
                 }
             }
@@ -1246,10 +1247,9 @@ export component SchedulerDialog inherits ThemedWindow {
                         root.stop-queue();
                     }
                 }
-                Button {
+                AccentButton {
                     text: @tr("Apply");
-                    primary: true;
-                    clicked => {
+                                        clicked => {
                         root.apply();
                     }
                 }
@@ -1324,10 +1324,9 @@ export component GrabberDialog inherits ThemedWindow {
                         placeholder-text: @tr("https://example.com/gallery/");
                         horizontal-stretch: 1;
                     }
-                    if !root.exploring: Button {
+                    if !root.exploring: AccentButton {
                         text: @tr("Start exploring");
-                        primary: true;
-                        clicked => {
+                                                clicked => {
                             root.explore();
                         }
                     }
@@ -1580,10 +1579,9 @@ export component GrabberDialog inherits ThemedWindow {
                 horizontal-stretch: 1;
                 horizontal-alignment: right;
             }
-            Button {
+            AccentButton {
                 text: @tr("Download checked");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.download();
                 }
             }
@@ -1666,10 +1664,9 @@ export component TipDialog inherits ThemedWindow {
                     root.next();
                 }
             }
-            Button {
+            AccentButton {
                 text: @tr("Close");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.close-window();
                 }
             }
@@ -2788,10 +2785,9 @@ export component SettingsDialog inherits ThemedWindow {
                 vertical-alignment: center;
                 horizontal-stretch: 1;
             }
-            Button {
+            AccentButton {
                 text: @tr("OK");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.save();
                 }
             }
@@ -2849,10 +2845,9 @@ export component PlaylistDialog inherits ThemedWindow {
                     root.fetch();
                 }
             }
-            Button {
+            AccentButton {
                 text: root.busy ? @tr("Getting the list…") : @tr("Get videos");
-                primary: true;
-                enabled: !root.busy && root.url != "";
+                                enabled: !root.busy && root.url != "";
                 clicked => {
                     root.fetch();
                 }
@@ -3041,10 +3036,9 @@ export component PlaylistDialog inherits ThemedWindow {
                 horizontal-alignment: right;
                 horizontal-stretch: 1;
             }
-            Button {
+            AccentButton {
                 text: @tr("Download");
-                primary: true;
-                enabled: root.entries.length > 0;
+                                enabled: root.entries.length > 0;
                 clicked => {
                     root.download();
                 }
@@ -3216,10 +3210,9 @@ export component BrowserDialog inherits ThemedWindow {
                     root.open-folder();
                 }
             }
-            Button {
+            AccentButton {
                 text: @tr("Close");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.close-window();
                 }
             }
@@ -3292,10 +3285,9 @@ export component AboutDialog inherits ThemedWindow {
         }
         HorizontalLayout {
             alignment: center;
-            Button {
+            AccentButton {
                 text: @tr("Support with PayPal");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.open-link("https://www.paypal.com/paypalme/ahmedezzat99");
                 }
             }
@@ -3308,10 +3300,9 @@ export component AboutDialog inherits ThemedWindow {
         }
         HorizontalLayout {
             alignment: end;
-            Button {
+            AccentButton {
                 text: @tr("Close");
-                primary: true;
-                clicked => {
+                                clicked => {
                     root.close-window();
                 }
             }

@@ -91,6 +91,9 @@ msgstr "Größe"
 msgid "Status"
 msgstr "Status"
 
+msgid "Progress"
+msgstr "Fortschritt"
+
 msgid "Time left"
 msgstr "Restzeit"
 
@@ -582,6 +585,9 @@ msgstr "Dateiname (immer sichtbar)"
 
 msgid "Q (queue number)"
 msgstr "W (Warteschlangennummer)"
+
+msgid "Progress bar"
+msgstr "Fortschrittsbalken"
 
 msgid "Reset"
 msgstr "Zurücksetzen"

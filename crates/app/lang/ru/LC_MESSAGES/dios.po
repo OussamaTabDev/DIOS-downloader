@@ -91,6 +91,9 @@ msgstr "Размер"
 msgid "Status"
 msgstr "Состояние"
 
+msgid "Progress"
+msgstr "Прогресс"
+
 msgid "Time left"
 msgstr "Осталось"
 
@@ -582,6 +585,9 @@ msgstr "Имя файла (всегда показывается)"
 
 msgid "Q (queue number)"
 msgstr "О (номер очереди)"
+
+msgid "Progress bar"
+msgstr "Индикатор прогресса"
 
 msgid "Reset"
 msgstr "Сбросить"

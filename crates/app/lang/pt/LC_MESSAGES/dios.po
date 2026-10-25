@@ -91,6 +91,9 @@ msgstr "Tamanho"
 msgid "Status"
 msgstr "Status"
 
+msgid "Progress"
+msgstr "Progresso"
+
 msgid "Time left"
 msgstr "Tempo restante"
 
@@ -582,6 +585,9 @@ msgstr "Nome do arquivo (sempre visível)"
 
 msgid "Q (queue number)"
 msgstr "F (número da fila)"
+
+msgid "Progress bar"
+msgstr "Barra de progresso"
 
 msgid "Reset"
 msgstr "Redefinir"

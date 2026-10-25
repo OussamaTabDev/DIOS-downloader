@@ -91,6 +91,9 @@ msgstr "Boyut"
 msgid "Status"
 msgstr "Durum"
 
+msgid "Progress"
+msgstr "İlerleme"
+
 msgid "Time left"
 msgstr "Kalan süre"
 
@@ -582,6 +585,9 @@ msgstr "Dosya adı (her zaman gösterilir)"
 
 msgid "Q (queue number)"
 msgstr "K (kuyruk numarası)"
+
+msgid "Progress bar"
+msgstr "İlerleme çubuğu"
 
 msgid "Reset"
 msgstr "Sıfırla"

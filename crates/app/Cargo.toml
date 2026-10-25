@@ -30,9 +30,20 @@ slint-build = "~1.18"
 [target.'cfg(windows)'.build-dependencies]
 winresource = "0.1"
 
+[features]
+# headless screenshot renderer (UI design tool, not used by the app itself)
+shot = ["slint/renderer-software"]
+
 [[bin]]
 name = "DIOSDownloader"
 path = "src/main.rs"
+
+# renders the real .slint windows headlessly with mock data, saving PNGs
+# (cargo run -p dios --features shot --bin dios-shot -- main 0 out.png)
+[[bin]]
+name = "dios-shot"
+path = "src/bin/shot.rs"
+required-features = ["shot"]
 
 [target.'cfg(windows)'.dependencies]
 tray-icon = "0.19"

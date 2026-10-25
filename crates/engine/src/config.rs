@@ -195,11 +195,11 @@ pub struct SiteLogin {
 pub const MAIN_QUEUE: u64 = 1;
 
 /// Bump when defaults change in a way old settings files should pick up.
-const SETTINGS_VERSION: u32 = 4;
+const SETTINGS_VERSION: u32 = 5;
 
 /// Columns of the download list that can be shown or hidden (View > Columns).
-pub const ALL_COLUMNS: [&str; 11] =
-    ["q", "size", "status", "eta", "speed", "last", "desc", "added", "saveto", "referer", "parent"];
+pub const ALL_COLUMNS: [&str; 12] =
+    ["q", "size", "status", "progress", "eta", "speed", "last", "desc", "added", "saveto", "referer", "parent"];
 /// Width a column starts with (pixels).
 pub fn default_column_width(key: &str) -> u32 {
     match key {
@@ -207,6 +207,7 @@ pub fn default_column_width(key: &str) -> u32 {
         "q" => 30,
         "size" => 82,
         "status" => 110,
+        "progress" => 150,
         "eta" => 80,
         "speed" => 92,
         "last" => 140,
@@ -216,7 +217,7 @@ pub fn default_column_width(key: &str) -> u32 {
     }
 }
 
-pub const DEFAULT_COLUMNS: [&str; 7] = ["q", "size", "status", "eta", "speed", "last", "desc"];
+pub const DEFAULT_COLUMNS: [&str; 8] = ["q", "size", "status", "progress", "eta", "speed", "last", "desc"];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -485,6 +486,15 @@ impl Settings {
                 }
             }
             s.schedule.enabled = false;
+        }
+        if s.version < 5 {
+            // v5: the list gets a proper progress bar column, like IDM
+            if !s.columns.iter().any(|c| c == "progress") {
+                match s.columns.iter().position(|c| c == "status") {
+                    Some(pos) => s.columns.insert(pos + 1, "progress".into()),
+                    None => s.columns.push("progress".into()),
+                }
+            }
         }
         s.version = SETTINGS_VERSION;
         if !s.queues.iter().any(|q| q.id == MAIN_QUEUE) {
