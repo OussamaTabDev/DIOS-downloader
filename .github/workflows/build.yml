@@ -1,4 +1,4 @@
-name: Build Ezoo Download for Windows
+name: Build DIOS Downloader for Windows
 
 # Every push: build and keep the result as an artifact.
 # A push to main whose commit message contains [release] also publishes a
@@ -36,7 +36,7 @@ jobs:
       - name: Run engine tests
         shell: pwsh
         run: |
-          cargo test -p swiftget-engine --no-fail-fast 2>&1 | Tee-Object -FilePath tests.txt
+          cargo test -p dios-engine --no-fail-fast 2>&1 | Tee-Object -FilePath tests.txt
           $code = $LASTEXITCODE
           # failures show up as annotations on the run page
           Select-String -Path tests.txt -Pattern "^error|panicked|FAILED|failures:|^    [a-z_:]+$" |
@@ -72,7 +72,7 @@ jobs:
           # everything for the setup is gathered here; the result is the setup only
           $p = "build-cache/stage"
           New-Item -ItemType Directory -Force "$p/tools", "dist" | Out-Null
-          Copy-Item target/release/EzooDownload.exe $p
+          Copy-Item target/release/DIOSDownloader.exe $p
           Copy-Item THIRD-PARTY-NOTICES.txt $p
           Copy-Item -Recurse extension "$p/extension"
           Copy-Item -Recurse extension "$p/extension-firefox"
@@ -83,25 +83,25 @@ jobs:
           $extVersion = (Get-Content extension/manifest.firefox.json -Raw | ConvertFrom-Json).version
           # Firefox keeps only add-ons signed by Mozilla; a version can be signed
           # once, so this runs for a release only
-          if ($env:IS_RELEASE -eq "true" -and $env:AMO_JWT_ISSUER -and $env:AMO_JWT_SECRET -and -not (Test-Path "extension-signed/ezoo-download-firefox-$extVersion.xpi")) {
+          if ($env:IS_RELEASE -eq "true" -and $env:AMO_JWT_ISSUER -and $env:AMO_JWT_SECRET -and -not (Test-Path "extension-signed/dios-downloader-firefox-$extVersion.xpi")) {
             npx --yes web-ext@8.10.0 sign --channel=unlisted --source-dir "$p/extension-firefox" --artifacts-dir xpi-out --api-key "$env:AMO_JWT_ISSUER" --api-secret "$env:AMO_JWT_SECRET" --approval-timeout 900000
             $xpi = Get-ChildItem xpi-out -Filter *.xpi | Select-Object -First 1
             if ($xpi) {
-              Copy-Item $xpi.FullName "$p/ezoo-download-firefox.xpi"
-              Copy-Item $xpi.FullName "dist/ezoo-download-firefox.xpi"
-              $fx = "{`n  ""addons"": {`n    ""ezoo-download@ezoo-tech.com"": {`n      ""updates"": [`n        { ""version"": ""$extVersion"", ""update_link"": ""https://github.com/${{ github.repository }}/releases/download/v$version/ezoo-download-firefox.xpi"" }`n      ]`n    }`n  }`n}`n"
+              Copy-Item $xpi.FullName "$p/dios-downloader-firefox.xpi"
+              Copy-Item $xpi.FullName "dist/dios-downloader-firefox.xpi"
+              $fx = "{`n  ""addons"": {`n    ""dios-downloader@dios.com"": {`n      ""updates"": [`n        { ""version"": ""$extVersion"", ""update_link"": ""https://github.com/${{ github.repository }}/releases/download/v$version/dios-downloader-firefox.xpi"" }`n      ]`n    }`n  }`n}`n"
               [IO.File]::WriteAllText("$PWD/dist/firefox-updates.json", $fx)
             } else { Write-Host "::warning::the Firefox add-on was not signed" }
           } elseif ($env:IS_RELEASE -eq "true") { Write-Host "::warning::AMO_JWT_ISSUER / AMO_JWT_SECRET are not set: the Firefox add-on is not signed" }
           # an add-on of this version already signed (by hand on addons.mozilla.org)
-          $signed = "extension-signed/ezoo-download-firefox-$extVersion.xpi"
-          if (-not (Test-Path "$p/ezoo-download-firefox.xpi") -and (Test-Path $signed)) {
-            Copy-Item $signed "$p/ezoo-download-firefox.xpi"
-            Copy-Item $signed "dist/ezoo-download-firefox.xpi"
-            $fx = "{`n  ""addons"": {`n    ""ezoo-download@ezoo-tech.com"": {`n      ""updates"": [`n        { ""version"": ""$extVersion"", ""update_link"": ""https://github.com/${{ github.repository }}/releases/download/v$version/ezoo-download-firefox.xpi"" }`n      ]`n    }`n  }`n}`n"
+          $signed = "extension-signed/dios-downloader-firefox-$extVersion.xpi"
+          if (-not (Test-Path "$p/dios-downloader-firefox.xpi") -and (Test-Path $signed)) {
+            Copy-Item $signed "$p/dios-downloader-firefox.xpi"
+            Copy-Item $signed "dist/dios-downloader-firefox.xpi"
+            $fx = "{`n  ""addons"": {`n    ""dios-downloader@dios.com"": {`n      ""updates"": [`n        { ""version"": ""$extVersion"", ""update_link"": ""https://github.com/${{ github.repository }}/releases/download/v$version/dios-downloader-firefox.xpi"" }`n      ]`n    }`n  }`n}`n"
             [IO.File]::WriteAllText("$PWD/dist/firefox-updates.json", $fx)
           }
-          $rel = Invoke-RestMethod "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/latest" -Headers @{ "User-Agent" = "EzooDownload-ci"; "Authorization" = "Bearer ${{ github.token }}" }
+          $rel = Invoke-RestMethod "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/latest" -Headers @{ "User-Agent" = "DIOSDownloader-ci"; "Authorization" = "Bearer ${{ github.token }}" }
           $asset = $rel.assets | Where-Object { $_.name -match '^ffmpeg-n[0-9.]+-latest-win64-gpl-[0-9.]+\.zip$' } |
             Sort-Object { [version](($_.name -replace '^ffmpeg-n([0-9.]+)-.*$', '$1') + '.0') } | Select-Object -Last 1
           Invoke-WebRequest $asset.browser_download_url -OutFile ffmpeg.zip
@@ -121,7 +121,7 @@ jobs:
           $u = $asset.updated_at; if ($u -is [datetime]) { $u = $u.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') }
           "$($asset.name) $u" | Set-Content "$p/tools/ffmpeg-version.txt" -NoNewline
           # yt-dlp of one release, checked against that release's SHA2-256SUMS
-          $yt = Invoke-RestMethod "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest" -Headers @{ "User-Agent" = "EzooDownload-ci"; "Authorization" = "Bearer ${{ github.token }}" }
+          $yt = Invoke-RestMethod "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest" -Headers @{ "User-Agent" = "DIOSDownloader-ci"; "Authorization" = "Bearer ${{ github.token }}" }
           $ytExe = $yt.assets | Where-Object { $_.name -eq "yt-dlp.exe" } | Select-Object -First 1
           $ytSums = $yt.assets | Where-Object { $_.name -eq "SHA2-256SUMS" } | Select-Object -First 1
           if (-not $ytExe -or -not $ytSums) { throw "the yt-dlp release has no yt-dlp.exe / SHA2-256SUMS" }
@@ -132,25 +132,25 @@ jobs:
           $yGot = (Get-FileHash "$p/tools/yt-dlp.exe" -Algorithm SHA256).Hash
           if (-not $yWant -or $yGot -ne $yWant.ToUpper()) { throw "yt-dlp.exe does not match its published SHA-256" }
           choco install innosetup -y --no-progress
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DMyAppVersion=$version" installer\ezoo.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DMyAppVersion=$version" installer\dios.iss
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }
-          $hash = (Get-FileHash dist/EzooDownload-Setup.exe -Algorithm SHA256).Hash.ToLower()
+          $hash = (Get-FileHash dist/DIOSDownloader-Setup.exe -Algorithm SHA256).Hash.ToLower()
           # the signature the program checks before it installs an update
           $sig = ""
           if ($env:UPDATE_SIGNING_KEY) {
-            $sig = (cargo run --quiet --release -p swiftget-engine --example sign_update -- $version $hash).Trim()
+            $sig = (cargo run --quiet --release -p dios-engine --example sign_update -- $version $hash).Trim()
             if ($LASTEXITCODE -ne 0 -or $sig.Length -ne 128) { throw "could not sign the release" }
           } elseif ($env:IS_RELEASE -eq "true") {
             throw "UPDATE_SIGNING_KEY is not set: installed copies would refuse this update"
           }
-          $json = "{`n  ""version"": ""$version"",`n  ""url"": ""https://github.com/${{ github.repository }}/releases/download/v$version/EzooDownload-Setup.exe"",`n  ""sha256"": ""$hash"",`n  ""sig"": ""$sig""`n}`n"
+          $json = "{`n  ""version"": ""$version"",`n  ""url"": ""https://github.com/${{ github.repository }}/releases/download/v$version/DIOSDownloader-Setup.exe"",`n  ""sha256"": ""$hash"",`n  ""sig"": ""$sig""`n}`n"
           [IO.File]::WriteAllText("$PWD/dist/version.json", $json)
           Get-Content dist/version.json
-          Compress-Archive -Path dist/EzooDownload-Setup.exe, dist/version.json -DestinationPath EzooDownload-windows.zip -Force
+          Compress-Archive -Path dist/DIOSDownloader-Setup.exe, dist/version.json -DestinationPath DIOSDownloader-windows.zip -Force
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: EzooDownload-windows
-          path: EzooDownload-windows.zip
+          name: DIOSDownloader-windows
+          path: DIOSDownloader-windows.zip
       # a release is published only when the commit message says [release]
       # (tag v<version> is created here); the same version again is skipped
       - name: Publish release
@@ -161,9 +161,9 @@ jobs:
         run: |
           gh release view "v$env:VERSION" --repo "${{ github.repository }}" *> $null
           if ($LASTEXITCODE -eq 0) { Write-Host "v$env:VERSION is already released"; exit 0 }
-          $files = @("dist/EzooDownload-Setup.exe", "dist/version.json")
-          if (Test-Path dist/ezoo-download-firefox.xpi) { $files += "dist/ezoo-download-firefox.xpi", "dist/firefox-updates.json" }
-          gh release create "v$env:VERSION" @files --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Ezoo Download $env:VERSION" --notes "Ezoo Download $env:VERSION" --latest
+          $files = @("dist/DIOSDownloader-Setup.exe", "dist/version.json")
+          if (Test-Path dist/dios-downloader-firefox.xpi) { $files += "dist/dios-downloader-firefox.xpi", "dist/firefox-updates.json" }
+          gh release create "v$env:VERSION" @files --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "DIOS Downloader $env:VERSION" --notes "DIOS Downloader $env:VERSION" --latest
           if ($LASTEXITCODE -ne 0) { throw "could not create the release" }
           # only the newest release stays: older ones (and their tags) go
           $tags = gh release list --repo "${{ github.repository }}" --limit 100 --json tagName -q '.[].tagName'

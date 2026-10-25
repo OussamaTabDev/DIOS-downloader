@@ -1,4 +1,4 @@
-//! "Add Ezoo Download to my browser": opens the browser on the right page
+//! "Add DIOS Downloader to my browser": opens the browser on the right page
 //! (its store page once the extension is published there, otherwise its
 //! extensions page with the folder path ready in the clipboard).
 
@@ -16,7 +16,7 @@ const STORE_BRAVE: &str = "";
 
 /// The Firefox add-on signed by Mozilla (built by the release): installed
 /// from this file it stays in Firefox for good.
-const FIREFOX_XPI: &str = "ezoo-download-firefox.xpi";
+const FIREFOX_XPI: &str = "dios-downloader-firefox.xpi";
 
 #[derive(Clone)]
 pub(crate) struct Browser {
@@ -152,15 +152,15 @@ fn add(ui: &Ui, i: usize) {
     }
     if b.firefox {
         if let Some(xpi) = firefox_xpi() {
-            // the signed add-on: Firefox asks "Add Ezoo Download?" and keeps it
+            // the signed add-on: Firefox asks "Add DIOS Downloader?" and keeps it
             let _ = std::process::Command::new(&exe).arg(&xpi).spawn();
             d.set_folder(xpi.display().to_string().into());
-            d.set_steps(t("Firefox opened the Ezoo Download add-on.\n1. Click \"Add\" in the message Firefox shows.\n2. Then click \"OK\".\n\nThe add-on is signed by Mozilla, so it stays in Firefox after you close it and updates by itself.").into());
+            d.set_steps(t("Firefox opened the DIOS Downloader add-on.\n1. Click \"Add\" in the message Firefox shows.\n2. Then click \"OK\".\n\nThe add-on is signed by Mozilla, so it stays in Firefox after you close it and updates by itself.").into());
             return;
         }
     }
     let Some(dir) = extension_dir(b.firefox) else {
-        d.set_steps(t("The extension folder was not found next to EzooDownload.exe. Install Ezoo Download again.").into());
+        d.set_steps(t("The extension folder was not found next to DIOSDownloader.exe. Install DIOS Downloader again.").into());
         return;
     };
     let path = dir.display().to_string();
@@ -172,7 +172,7 @@ fn add(ui: &Ui, i: usize) {
     let steps = if b.firefox {
         t("Firefox opened its add-ons debugging page.\n1. Click \"Load Temporary Add-on…\".\n2. Paste the folder path (Ctrl+V, it is already copied) and open the file \"manifest.json\" in it.\n\nFirefox removes add-ons loaded this way when it closes. To keep it for good the extension must be signed by Mozilla (free) – ask for the signed version.")
     } else {
-        tf("{} opened its extensions page.\n1. Turn on \"Developer mode\" (a switch on that page).\n2. Click \"Load unpacked\".\n3. Paste the folder path (Ctrl+V – it is already copied) and click \"Select folder\".\n\nThat's all: the Ezoo Download icon appears next to the address bar. You do this only once.", &[&b.name])
+        tf("{} opened its extensions page.\n1. Turn on \"Developer mode\" (a switch on that page).\n2. Click \"Load unpacked\".\n3. Paste the folder path (Ctrl+V – it is already copied) and click \"Select folder\".\n\nThat's all: the DIOS Downloader icon appears next to the address bar. You do this only once.", &[&b.name])
     };
     d.set_steps(steps.into());
 }

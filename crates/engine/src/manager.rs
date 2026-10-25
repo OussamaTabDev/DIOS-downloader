@@ -90,22 +90,14 @@ pub struct Manager {
 }
 
 /// Default place for settings.json and downloads.json
-/// (%APPDATA%\Ezoo\EzooDownload\data on Windows). The list and settings of
-/// the earlier "SwiftGet" name are carried over the first time.
+/// (%APPDATA%\DIOS\DIOSDownloader\data on Windows, ~/.local/share/dios on
+/// Linux). DIOS Downloader starts with a fresh data folder and does not
+/// import settings from any earlier product.
 pub fn default_data_dir() -> PathBuf {
-    let dir = directories::ProjectDirs::from("com", "Ezoo", "EzooDownload")
+    let dir = directories::ProjectDirs::from("com", "DIOS", "DIOSDownloader")
         .map(|p| p.data_dir().to_path_buf())
-        .unwrap_or_else(|| PathBuf::from("ezoo-data"));
-    if !dir.exists() {
-        if let Some(old) = directories::ProjectDirs::from("com", "SwiftGet", "SwiftGet").map(|p| p.data_dir().to_path_buf()) {
-            if old.exists() {
-                let _ = std::fs::create_dir_all(&dir);
-                for f in ["settings.json", "downloads.json"] {
-                    let _ = std::fs::copy(old.join(f), dir.join(f));
-                }
-            }
-        }
-    }
+        .unwrap_or_else(|| PathBuf::from("dios-data"));
+    let _ = std::fs::create_dir_all(&dir);
     dir
 }
 
@@ -320,7 +312,7 @@ impl Manager {
         let mut rec = rec;
         if early {
             // parts get a fixed name in a fixed folder: name and folder can still change
-            rec.work_stem = Some(format!(".ezoo-{id}"));
+            rec.work_stem = Some(format!(".dios-{id}"));
             if rec.temp_dir.is_none() {
                 rec.temp_dir = Some(rec.save_dir.clone());
             }

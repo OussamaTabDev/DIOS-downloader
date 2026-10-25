@@ -1,4 +1,4 @@
-//! New versions of Ezoo Download from GitHub, always on: right after the
+//! New versions of DIOS Downloader from GitHub, always on: right after the
 //! program opens it looks for a newer release; when there is one it is
 //! downloaded, checked (signature of the release + SHA-256) and installed silently, and the program
 //! starts again by itself. While the program stays open it looks again every
@@ -15,13 +15,13 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use swiftget_engine::{selfupdate, Manager, Status};
+use dios_engine::{selfupdate, Manager, Status};
 
 /// one check / download at a time (automatic or from the menu)
 static BUSY: AtomicBool = AtomicBool::new(false);
 
 fn update_dir() -> PathBuf {
-    swiftget_engine::default_data_dir().join("update")
+    dios_engine::default_data_dir().join("update")
 }
 
 fn downloading(mgr: &Manager) -> bool {
@@ -178,7 +178,7 @@ pub fn check_now(ui: &Ui) {
                 return finish(&shared);
             }
             Ok(None) => {
-                tell(&shared, 1, t("Ezoo Download is up to date"), tf("Version {} is the newest version.", &[&selfupdate::current()]), -1.0);
+                tell(&shared, 1, t("DIOS Downloader is up to date"), tf("Version {} is the newest version.", &[&selfupdate::current()]), -1.0);
                 return finish(&shared);
             }
             Ok(Some(rel)) => rel,
@@ -209,7 +209,7 @@ pub fn check_now(ui: &Ui) {
                     &shared,
                     3,
                     tf("Installing version {}…", &[&rel.version]),
-                    t("Ezoo Download closes now and opens again when it is installed."),
+                    t("DIOS Downloader closes now and opens again when it is installed."),
                     -1.0,
                 );
                 // a moment to read it, then the setup runs in front of the user

@@ -3,7 +3,7 @@
 
 use crate::open_window;
 use crate::*;
-use swiftget_engine::config::{parse_hhmm, QueueDef};
+use dios_engine::config::{parse_hhmm, QueueDef};
 use crate::i18n::{t, tf};
 
 #[derive(Default)]

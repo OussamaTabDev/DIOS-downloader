@@ -26,7 +26,7 @@ async function init() {
     })
   );
 
-  chrome.runtime.sendMessage({ type: "swiftget-status" }, (res) => {
+  chrome.runtime.sendMessage({ type: "dios-status" }, (res) => {
     const el = document.getElementById("status");
     const ok = res && res.ok;
     el.textContent = ok ? "connected" : "app not running";
@@ -35,7 +35,7 @@ async function init() {
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) return;
-  chrome.runtime.sendMessage({ type: "swiftget-get-media", tabId: tab.id }, (items) => {
+  chrome.runtime.sendMessage({ type: "dios-get-media", tabId: tab.id }, (items) => {
     if (!items || !items.length) return;
     const box = document.getElementById("media");
     box.replaceChildren();
@@ -53,7 +53,7 @@ async function init() {
       btn.disabled = !!m.disabled;
       btn.addEventListener("click", () => {
         chrome.runtime.sendMessage(
-          { type: "swiftget-download", item: m, title: tab.title, referrer: tab.url, fileName: `${title}.${m.ext || "mp4"}` },
+          { type: "dios-download", item: m, title: tab.title, referrer: tab.url, fileName: `${title}.${m.ext || "mp4"}` },
           (res) => {
             btn.textContent = res && res.ok ? "Sent ✔" : "App not running";
           }

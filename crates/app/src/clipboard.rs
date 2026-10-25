@@ -32,7 +32,7 @@ pub fn downloadable_url(text: &str) -> Option<String> {
 /// Polls the clipboard once a second on its own thread.
 pub fn spawn(enabled: impl Fn() -> bool + Send + 'static, on_url: impl Fn(String) + Send + 'static) {
     std::thread::Builder::new()
-        .name("swiftget-clipboard".into())
+        .name("dios-clipboard".into())
         .spawn(move || {
             let Ok(mut clip) = arboard::Clipboard::new() else { return };
             // ignore whatever was already copied before we started

@@ -2,7 +2,7 @@
 
 use crate::open_window;
 use crate::*;
-use swiftget_engine::config::{ServerLimit, SiteLogin, DEFAULT_CAPTURE_EXTS};
+use dios_engine::config::{ServerLimit, SiteLogin, DEFAULT_CAPTURE_EXTS};
 use crate::i18n::{t, tf};
 
 /// Lists edited inside the Options window before OK is pressed.
@@ -453,7 +453,7 @@ pub(crate) fn wire(ui: &Ui) {
                     let _ = d.hide();
                     refresh(&ui2);
                     if port_changed {
-                        message(&t("Restart Ezoo Download to use the new port. Set the same port in the browser extension."));
+                        message(&t("Restart DIOS Downloader to use the new port. Set the same port in the browser extension."));
                     }
                 }
                 Err(msg) => d.set_message(msg.into()),

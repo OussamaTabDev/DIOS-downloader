@@ -1,9 +1,9 @@
-//! New versions of Ezoo Download itself.
+//! New versions of DIOS Downloader itself.
 //!
 //! Every release on GitHub carries two files:
 //!
-//! * `EzooDownload-Setup.exe` – the installer
-//! * `version.json`           – `{"version":"1.0.1","url":"…/EzooDownload-Setup.exe","sha256":"…"}`
+//! * `DIOSDownloader-Setup.exe` – the installer
+//! * `version.json`           – `{"version":"1.0.1","url":"…/DIOSDownloader-Setup.exe","sha256":"…"}`
 //!
 //! The app reads `version.json` of the latest release, and when the version
 //! there is higher than its own it downloads the installer, checks that its
@@ -19,8 +19,8 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
-pub const REPO: &str = "AhmedEzo686/ezoo-download";
-pub const SETUP_NAME: &str = "EzooDownload-Setup.exe";
+pub const REPO: &str = "OussamaTabDev/DIOS-downloader";
+pub const SETUP_NAME: &str = "DIOSDownloader-Setup.exe";
 
 pub fn version_url() -> String {
     format!("https://github.com/{REPO}/releases/latest/download/version.json")
@@ -47,7 +47,7 @@ pub struct Release {
 
 /// What the release signature covers.
 pub fn signed_message(version: &str, sha256: &str) -> String {
-    format!("ezoo-download-update\n{}\n{}\n", version.trim(), sha256.trim().to_ascii_lowercase())
+    format!("dios-downloader-update\n{}\n{}\n", version.trim(), sha256.trim().to_ascii_lowercase())
 }
 
 pub fn from_hex(s: &str) -> Option<Vec<u8>> {
@@ -120,7 +120,7 @@ pub fn parse(text: &str) -> anyhow::Result<Release> {
 pub fn parse_signed(text: &str) -> anyhow::Result<Release> {
     let r = parse(text)?;
     if !signature_ok(&r, UPDATE_PUBLIC_KEY) {
-        anyhow::bail!("the update is not signed by Ezoo Download, so it is not installed");
+        anyhow::bail!("the update is not signed by DIOS Downloader, so it is not installed");
     }
     Ok(r)
 }
@@ -180,7 +180,7 @@ pub async fn download_with_progress(
     progress: &(dyn Fn(u64, Option<u64>) + Send + Sync),
 ) -> anyhow::Result<PathBuf> {
     std::fs::create_dir_all(dir)?;
-    let dest = dir.join(format!("EzooDownload-Setup-{}.exe", r.version.trim_start_matches('v')));
+    let dest = dir.join(format!("DIOSDownloader-Setup-{}.exe", r.version.trim_start_matches('v')));
     if dest.exists() {
         if file_sha256(&dest)?.eq_ignore_ascii_case(&r.sha256) {
             return Ok(dest);
@@ -312,7 +312,7 @@ mod tests {
 
     #[test]
     fn installer_checked_again_before_it_runs() {
-        let dir = std::env::temp_dir().join(format!("ezoo-su-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("dios-su-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let f = dir.join("setup.exe");
         std::fs::write(&f, b"changed").unwrap();

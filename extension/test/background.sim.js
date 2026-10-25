@@ -1,4 +1,4 @@
-// Runs background.js with a fake `chrome` API and a fake SwiftGet app.
+// Runs background.js with a fake `chrome` API and a fake DIOS Downloader app.
 // node extension/test/background.sim.js
 const fs = require("fs"), path = require("path"), vm = require("vm"), assert = require("assert");
 const dir = path.join(__dirname, "..");
@@ -52,13 +52,13 @@ const tick = () => new Promise((r) => setTimeout(r, 20));
     listeners.before({ tabId: 7, url: gv(140, "audio/mp4", 4e6, "300.5", r) }); await tick();
   }
   const last = tabMsgs[tabMsgs.length - 1];
-  assert.strictEqual(last.type, "swiftget-media");
+  assert.strictEqual(last.type, "dios-media");
   assert.strictEqual(last.items[0].label, "1080p · MP4");
   console.log("button shows:", last.items.map((i) => i.label).join(" | "));
 
   // user clicks 1080p on the page
   const res = await new Promise((resolve) =>
-    listeners.msg({ type: "swiftget-download", item: last.items[0], title: "(2) Cool video - YouTube" }, { tab: { id: 7, url: tabUrl } }, resolve));
+    listeners.msg({ type: "dios-download", item: last.items[0], title: "(2) Cool video - YouTube" }, { tab: { id: 7, url: tabUrl } }, resolve));
   assert.strictEqual(res.ok, true);
   const req = sent[0];
   assert(req.url.includes("itag=137") && !req.url.includes("range="));
@@ -85,7 +85,7 @@ const tick = () => new Promise((r) => setTimeout(r, 20));
   const final = tabMsgs[tabMsgs.length - 1].items;
   assert.strictEqual(final[0].label, "1080p · MP4");
   const res2 = await new Promise((resolve) =>
-    listeners.msg({ type: "swiftget-download", item: final[0], title: "ignored - YouTube" }, { tab: { id: 7, url: tabUrl } }, resolve));
+    listeners.msg({ type: "dios-download", item: final[0], title: "ignored - YouTube" }, { tab: { id: 7, url: tabUrl } }, resolve));
   assert.strictEqual(res2.ok, true);
   const req2 = sent[sent.length - 1];
   assert.strictEqual(req2.fileName, "Real_ Title [1080p].mp4");
@@ -99,14 +99,14 @@ const tick = () => new Promise((r) => setTimeout(r, 20));
   tabUrl = "https://www.instagram.com/";
   await listeners.upd(8, { url: tabUrl, status: "loading" }, { id: 8, url: tabUrl });
   tabMsgs.length = 0;
-  listeners.msg({ type: "swiftget-video-seen", page: "https://www.instagram.com/reel/C1abcDEF/" }, { tab: { id: 8, url: tabUrl } }, () => {});
+  listeners.msg({ type: "dios-video-seen", page: "https://www.instagram.com/reel/C1abcDEF/" }, { tab: { id: 8, url: tabUrl } }, () => {});
   await new Promise((r) => setTimeout(r, 150));
   const igCall = ytCalls[ytCalls.length - 1];
   assert.strictEqual(igCall.url, "https://www.instagram.com/reel/C1abcDEF/");
   const igItems = tabMsgs[tabMsgs.length - 1].items;
   assert.strictEqual(igItems[0].label, "1080p · MP4");
   const res3 = await new Promise((resolve) =>
-    listeners.msg({ type: "swiftget-download", item: igItems[0], title: "x" }, { tab: { id: 8, url: tabUrl } }, resolve));
+    listeners.msg({ type: "dios-download", item: igItems[0], title: "x" }, { tab: { id: 8, url: tabUrl } }, resolve));
   assert.strictEqual(res3.ok, true);
   const req3 = sent[sent.length - 1];
   assert.strictEqual(req3.sourcePage, "https://www.instagram.com/reel/C1abcDEF/");

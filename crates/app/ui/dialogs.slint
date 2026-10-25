@@ -1,4 +1,4 @@
-// Ezoo Download – the classic download manager's extra windows:
+// DIOS Downloader – the classic download manager's extra windows:
 // Options, Scheduler (queues), File Properties, Columns, Category properties,
 // Find, Duplicate link, Shutdown countdown, Site Grabber / Download all
 // links, Tip of the day and Refresh download address.
@@ -781,7 +781,7 @@ export component DuplicateDialog inherits ThemedWindow {
 // ------------------------------------------------------------------ shut down / sleep countdown
 
 export component CountdownDialog inherits ThemedWindow {
-    title: @tr("Ezoo Download");
+    title: @tr("DIOS Downloader");
     preferred-width: 420px;
     always-on-top: true;
     // always in front already; kept so every window can be brought forward the same way
@@ -801,7 +801,7 @@ export component CountdownDialog inherits ThemedWindow {
             color: Theme.ok;
         }
         Label {
-            text: @tr("Ezoo Download will {} in {} seconds.", root.action-text, root.seconds-left);
+            text: @tr("DIOS Downloader will {} in {} seconds.", root.action-text, root.seconds-left);
             wrap: word-wrap;
         }
         Rectangle {
@@ -1077,7 +1077,7 @@ export component SchedulerDialog inherits ThemedWindow {
                         }
                     }
                     CheckBox {
-                        text: @tr("Start the queue when Ezoo Download starts");
+                        text: @tr("Start the queue when DIOS Downloader starts");
                         checked <=> root.on-startup;
                     }
                     Rectangle {
@@ -1110,7 +1110,7 @@ export component SchedulerDialog inherits ThemedWindow {
                             text: @tr("When the queue is done");
                         }
                         ComboBox {
-                            model: [@tr("Do nothing"), @tr("Exit Ezoo Download"), @tr("Sleep"), @tr("Shut down the computer"), @tr("Hibernate")];
+                            model: [@tr("Do nothing"), @tr("Exit DIOS Downloader"), @tr("Sleep"), @tr("Shut down the computer"), @tr("Hibernate")];
                             current-index <=> root.when-done;
                         }
                         Rectangle {
@@ -1702,7 +1702,7 @@ export component RefreshDialog inherits ThemedWindow {
             overflow: elide;
         }
         Label {
-            text: @tr("1. Open the web page where you got this file.\n2. Click the download link there again (or start the video).\n3. Ezoo Download takes the new address and continues from where it stopped.");
+            text: @tr("1. Open the web page where you got this file.\n2. Click the download link there again (or start the video).\n3. DIOS Downloader takes the new address and continues from where it stopped.");
             wrap: word-wrap;
         }
         if root.page != "": HorizontalLayout {
@@ -1789,7 +1789,7 @@ export component SettingsDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
     always-on-top: root.front;
-    title: @tr("Ezoo Download – Options");
+    title: @tr("DIOS Downloader – Options");
     preferred-width: 820px;
     preferred-height: 600px;
 
@@ -2070,7 +2070,7 @@ export component SettingsDialog inherits ThemedWindow {
                         }
                     }
                     CheckBox {
-                        text: @tr("Launch Ezoo Download on Windows startup");
+                        text: @tr("Launch DIOS Downloader on Windows startup");
                         checked <=> root.start-with-windows;
                     }
                     CheckBox {
@@ -2112,12 +2112,12 @@ export component SettingsDialog inherits ThemedWindow {
                         text: @tr("Browser integration");
                     }
                     Hint {
-                        text: @tr("Chrome and Edge: load the \"extension\" folder in chrome://extensions (Developer mode > Load unpacked). Downloads, videos and the right click menu then go to Ezoo Download.");
+                        text: @tr("Chrome and Edge: load the \"extension\" folder in chrome://extensions (Developer mode > Load unpacked). Downloads, videos and the right click menu then go to DIOS Downloader.");
                     }
                     HorizontalLayout {
                         spacing: 8px;
                         Button {
-                            text: @tr("Add Ezoo Download to my browser…");
+                            text: @tr("Add DIOS Downloader to my browser…");
                             clicked => {
                                 root.open-extension-folder();
                             }
@@ -2143,7 +2143,7 @@ export component SettingsDialog inherits ThemedWindow {
                     HorizontalLayout {
                         spacing: 8px;
                         Label {
-                            text: @tr("Hold this key to force Ezoo Download to take a link");
+                            text: @tr("Hold this key to force DIOS Downloader to take a link");
                         }
                         ComboBox {
                             width: 100px;
@@ -2770,7 +2770,7 @@ export component SettingsDialog inherits ThemedWindow {
                         }
                     }
                     CheckBox {
-                        text: @tr("Always turn on the speed limiter when Ezoo Download starts");
+                        text: @tr("Always turn on the speed limiter when DIOS Downloader starts");
                         checked <=> root.limiter-startup;
                     }
                     Hint {
@@ -3147,7 +3147,7 @@ export component BrowserDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
     always-on-top: root.front;
-    title: @tr("Add Ezoo Download to your browser");
+    title: @tr("Add DIOS Downloader to your browser");
     preferred-width: 880px;
     in property <[BrowserRow]> browsers;
     in property <string> steps;
@@ -3233,7 +3233,7 @@ export component AboutDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
     always-on-top: root.front;
-    title: @tr("About Ezoo Download");
+    title: @tr("About DIOS Downloader");
     preferred-width: 420px;
     in property <string> version;
     callback open-link(string);
@@ -3250,7 +3250,7 @@ export component AboutDialog inherits ThemedWindow {
             }
         }
         Text {
-            text: "Ezoo Download";
+            text: "DIOS Downloader";
             horizontal-alignment: center;
             font-size: 20px * Theme.font-scale;
             font-weight: 700;
@@ -3262,7 +3262,7 @@ export component AboutDialog inherits ThemedWindow {
             color: Theme.muted;
         }
         Text {
-            text: @tr("Coded by Ahmed Ezzat");
+            text: @tr("Coded by DIOS Downloader Team");
             horizontal-alignment: center;
             font-size: 13px * Theme.font-scale;
             color: Theme.text;
@@ -3273,7 +3273,7 @@ export component AboutDialog inherits ThemedWindow {
             Button {
                 text: "YouTube";
                 clicked => {
-                    root.open-link("https://www.youtube.com/@Ezoo-Tech");
+                    root.open-link("https://github.com/OussamaTabDev/DIOS-downloader");
                 }
             }
             Button {
@@ -3284,7 +3284,7 @@ export component AboutDialog inherits ThemedWindow {
             }
         }
         Text {
-            text: @tr("Like Ezoo Download? You can support its development:");
+            text: @tr("Like DIOS Downloader? You can support its development:");
             horizontal-alignment: center;
             font-size: 12px * Theme.font-scale;
             color: Theme.muted;

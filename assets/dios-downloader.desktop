@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=DIOS Downloader
+GenericName=Download Manager
+Comment=Fast download manager: multi-connection downloads, resume, video and audio
+Exec=DIOSDownloader
+Icon=dios-downloader
+Terminal=false
+Categories=Network;FileTransfer;
+Keywords=download;manager;DIOS;
+StartupWMClass=DIOSDownloader

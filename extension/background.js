@@ -1,14 +1,14 @@
-// Ezoo Download browser integration (Manifest V3 service worker)
-//  1. takes over browser downloads and hands them to the Ezoo Download app
+// DIOS Downloader browser integration (Manifest V3 service worker)
+//  1. takes over browser downloads and hands them to the DIOS Downloader app
 //     together with cookies + referrer, so links behind a login still work
 //  2. watches network responses for video/audio and HLS streams and offers
 //     a "Download this video" button on the page
 //  3. Videos on web pages: the app finds the qualities with yt-dlp,
 //     downloads video + audio with many connections and joins them
-//  4. adds "Download with Ezoo Download", "Download all links with Ezoo
-//     Download" and "Download video with Ezoo Download" to the right-click menu
+//  4. adds "Download with DIOS Downloader", "Download all links with DIOS
+//     Download" and "Download video with DIOS Downloader" to the right-click menu
 //  5. follows the app's Options: file types to take, sites to leave alone,
-//     the keys that skip / force Ezoo Download, the video panel
+//     the keys that skip / force DIOS Downloader, the video panel
 
 // Chrome / Edge / Opera load yt-core.js here; Firefox lists it in its manifest
 if (typeof importScripts === "function") importScripts("yt-core.js");
@@ -43,7 +43,7 @@ async function followAppVersion() {
   await chrome.storage.session.set({ versionCheckAt: Date.now() });
   const { port } = await getOpts();
   try {
-    const r = await fetchWithTimeout(apiUrl(port, "/ping"), { headers: { "X-SwiftGet": "1" } }, 800);
+    const r = await fetchWithTimeout(apiUrl(port, "/ping"), { headers: { "X-DIOS": "1" } }, 800);
     if (!r.ok || typeof r.json !== "function") return;
     const want = (await r.json()).ext;
     const have = chrome.runtime.getManifest().version;
@@ -63,7 +63,7 @@ followAppVersion();
 async function appAlive() {
   const { port } = await getOpts();
   try {
-    const r = await fetchWithTimeout(apiUrl(port, "/ping"), { headers: { "X-SwiftGet": "1" } }, 800);
+    const r = await fetchWithTimeout(apiUrl(port, "/ping"), { headers: { "X-DIOS": "1" } }, 800);
     if (r.ok) followAppVersion();
     return r.ok;
   } catch {
@@ -122,12 +122,12 @@ async function sendToApp({ url, audioUrl, referrer, fileName, headers, sourcePag
     apiUrl(port, "/add"),
     {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-SwiftGet": "1" },
+      headers: { "Content-Type": "application/json", "X-DIOS": "1" },
       body: JSON.stringify(body),
     },
     3000
   );
-  if (!r.ok) throw new Error(`Ezoo Download answered HTTP ${r.status}`);
+  if (!r.ok) throw new Error(`DIOS Downloader answered HTTP ${r.status}`);
 }
 
 // ---------------------------------------------------------------- app options
@@ -140,7 +140,7 @@ async function getConfig() {
   if (appConfig && Date.now() - configAt < 60000) return appConfig;
   const { port } = await getOpts();
   try {
-    const r = await fetchWithTimeout(apiUrl(port, "/config"), { headers: { "X-SwiftGet": "1" } }, 1000);
+    const r = await fetchWithTimeout(apiUrl(port, "/config"), { headers: { "X-DIOS": "1" } }, 1000);
     if (r.ok) {
       appConfig = await r.json();
       configAt = Date.now();
@@ -173,7 +173,7 @@ function extensionOf(name) {
   return dot > 0 ? last.slice(dot + 1).toLowerCase() : "";
 }
 
-/** Should Ezoo Download take this browser download? (Options > File Types rules) */
+/** Should DIOS Downloader take this browser download? (Options > File Types rules) */
 function wanted(cfg, url, fileName, mime, keys) {
   if (!cfg) return true; // old app: take everything like before
   if (cfg.skipKey && cfg.skipKey !== "none" && keys[cfg.skipKey]) return false;
@@ -250,7 +250,7 @@ async function appSaysBrowser(urls) {
   try {
     const r = await fetchWithTimeout(
       apiUrl(port, "/browser"),
-      { method: "POST", headers: { "Content-Type": "application/json", "X-SwiftGet": "1" }, body: JSON.stringify({ urls }) },
+      { method: "POST", headers: { "Content-Type": "application/json", "X-DIOS": "1" }, body: JSON.stringify({ urls }) },
       800
     );
     if (!r.ok || typeof r.json !== "function") return false;
@@ -348,8 +348,8 @@ async function itemsForTab(tabId) {
           items.push({ label: "Can't get this video", sub: yt.resolveError, disabled: true });
         } else if (yt.sabr) {
           items.push({
-            label: "This video needs Ezoo Download",
-            sub: "Open Ezoo Download (with yt-dlp.exe next to it) and reload the page",
+            label: "This video needs DIOS Downloader",
+            sub: "Open DIOS Downloader (with yt-dlp.exe next to it) and reload the page",
             disabled: true,
           });
         }
@@ -375,13 +375,13 @@ async function pushToTab(tabId) {
   const count = items.filter((i) => !i.disabled).length;
   chrome.action.setBadgeBackgroundColor({ color: "#1f6feb" });
   chrome.action.setBadgeText({ tabId, text: count ? String(count) : "" }).catch(() => {});
-  chrome.tabs.sendMessage(tabId, { type: "swiftget-media", items }).catch(() => {});
+  chrome.tabs.sendMessage(tabId, { type: "dios-media", items }).catch(() => {});
 }
 
 async function clearTab(tabId) {
   await chrome.storage.session.remove([`media_${tabId}`, `yt_${tabId}`, `res_${tabId}`]);
   chrome.action.setBadgeText({ tabId, text: "" }).catch(() => {});
-  chrome.tabs.sendMessage(tabId, { type: "swiftget-media", items: [] }).catch(() => {});
+  chrome.tabs.sendMessage(tabId, { type: "dios-media", items: [] }).catch(() => {});
 }
 
 // ---------------------------------------------------------------- 2. media sniffer
@@ -507,7 +507,7 @@ async function askApp(page) {
     apiUrl(port, "/resolve"),
     {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-SwiftGet": "1" },
+      headers: { "Content-Type": "application/json", "X-DIOS": "1" },
       body: JSON.stringify({ url: page, cookieList: await cookieList(page) }),
     },
     90000
@@ -540,7 +540,7 @@ async function resolveYoutube(tabId, pageUrl) {
   try {
     change = await askApp(`https://www.youtube.com/watch?v=${videoId}`);
   } catch (e) {
-    change = { resolveError: (await appAlive()) ? String((e && e.message) || e) : "Ezoo Download is not running" };
+    change = { resolveError: (await appAlive()) ? String((e && e.message) || e) : "DIOS Downloader is not running" };
   } finally {
     if (resolving.get(tabId) === videoId) resolving.delete(tabId);
   }
@@ -567,7 +567,7 @@ async function resolvePage(tabId, page) {
   try {
     change = await askApp(page);
   } catch (e) {
-    change = { resolveError: (await appAlive()) ? String((e && e.message) || e) : "Ezoo Download is not running" };
+    change = { resolveError: (await appAlive()) ? String((e && e.message) || e) : "DIOS Downloader is not running" };
   } finally {
     if (resolving.get(tabId) === page) resolving.delete(tabId);
   }
@@ -591,7 +591,7 @@ async function resolveOneVideo(msg, tab) {
       if (r.resolved && r.resolved.options.length) items.unshift(...optionItems(r.resolved, page));
       else if (!items.length) return { error: r.resolveError || "Can't get this video" };
     } catch (e) {
-      if (!items.length) return { error: (await appAlive()) ? String((e && e.message) || e) : "Ezoo Download is not running" };
+      if (!items.length) return { error: (await appAlive()) ? String((e && e.message) || e) : "DIOS Downloader is not running" };
     }
   }
   return items.length ? { items } : { error: "Can't get this video" };
@@ -620,25 +620,25 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 function makeMenus() {
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: "swiftget-link", title: "Download with Ezoo Download", contexts: ["link"] });
+    chrome.contextMenus.create({ id: "dios-link", title: "Download with DIOS Downloader", contexts: ["link"] });
     chrome.contextMenus.create({
-      id: "swiftget-media",
-      title: "Download this media with Ezoo Download",
+      id: "dios-media",
+      title: "Download this media with DIOS Downloader",
       contexts: ["video", "audio", "image"],
     });
     chrome.contextMenus.create({
-      id: "swiftget-video",
-      title: "Download video with Ezoo Download",
+      id: "dios-video",
+      title: "Download video with DIOS Downloader",
       contexts: ["page", "video", "frame"],
     });
     chrome.contextMenus.create({
-      id: "swiftget-all",
-      title: "Download all links with Ezoo Download",
+      id: "dios-all",
+      title: "Download all links with DIOS Downloader",
       contexts: ["page", "frame", "link", "image"],
     });
     chrome.contextMenus.create({
-      id: "swiftget-selected",
-      title: "Download selected links with Ezoo Download",
+      id: "dios-selected",
+      title: "Download selected links with DIOS Downloader",
       contexts: ["selection"],
     });
   });
@@ -648,14 +648,14 @@ chrome.runtime.onStartup.addListener(makeMenus);
 
 /** Every link of the page (or of the selection) to the app's "Download all links". */
 async function sendAllLinks(tab, selection) {
-  const res = await chrome.tabs.sendMessage(tab.id, { type: "swiftget-collect-links", selection }).catch(() => null);
+  const res = await chrome.tabs.sendMessage(tab.id, { type: "dios-collect-links", selection }).catch(() => null);
   if (!res || !res.links || !res.links.length) return;
   const { port } = await getOpts();
   await fetchWithTimeout(
     apiUrl(port, "/links"),
     {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-SwiftGet": "1" },
+      headers: { "Content-Type": "application/json", "X-DIOS": "1" },
       body: JSON.stringify({
         page: res.page || tab.url,
         links: res.links,
@@ -668,22 +668,22 @@ async function sendAllLinks(tab, selection) {
 }
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "swiftget-all" || info.menuItemId === "swiftget-selected") {
-    if (tab) sendAllLinks(tab, info.menuItemId === "swiftget-selected").catch((e) => console.warn("Ezoo Download:", e));
+  if (info.menuItemId === "dios-all" || info.menuItemId === "dios-selected") {
+    if (tab) sendAllLinks(tab, info.menuItemId === "dios-selected").catch((e) => console.warn("DIOS Downloader:", e));
     return;
   }
-  if (info.menuItemId === "swiftget-video") {
+  if (info.menuItemId === "dios-video") {
     if (!tab) return;
     // find the qualities and open the panel on the page
     if (isYoutube(tab.url)) resolveYoutube(tab.id, tab.url);
     else resolvePage(tab.id, info.frameUrl && info.frameUrl !== tab.url ? tab.url : tab.url);
-    chrome.tabs.sendMessage(tab.id, { type: "swiftget-open-panel" }).catch(() => {});
+    chrome.tabs.sendMessage(tab.id, { type: "dios-open-panel" }).catch(() => {});
     pushToTab(tab.id);
     return;
   }
   const url = info.linkUrl || info.srcUrl;
   if (!url || !/^https?:/i.test(url)) return;
-  sendToApp({ url, referrer: info.pageUrl }).catch((e) => console.warn("Ezoo Download:", e));
+  sendToApp({ url, referrer: info.pageUrl }).catch((e) => console.warn("DIOS Downloader:", e));
 });
 
 // ---------------------------------------------------------------- messages from page/popup
@@ -697,37 +697,37 @@ function reply(promise, sendResponse) {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
-    case "swiftget-download": {
+    case "dios-download": {
       const item = msg.item || {};
       const referrer = sender.tab ? sender.tab.url : msg.referrer;
       if (item.yt) return reply(downloadVideo(item.yt, msg.title, referrer), sendResponse);
       return reply(sendToApp({ url: item.url, referrer, fileName: msg.fileName }), sendResponse);
     }
-    case "swiftget-get-media":
+    case "dios-get-media":
       itemsForTab(msg.tabId).then(sendResponse);
       return true;
-    case "swiftget-media-request":
+    case "dios-media-request":
       if (!sender.tab) return false;
       if (sender.tab.url && videoIdOf(sender.tab.url)) resolveYoutube(sender.tab.id, sender.tab.url);
       itemsForTab(sender.tab.id).then(sendResponse);
       return true;
-    case "swiftget-video-seen":
+    case "dios-video-seen":
       // the page shows a video: find its qualities
       if (!sender.tab) return false;
       if (isYoutube(sender.tab.url)) resolveYoutube(sender.tab.id, sender.tab.url);
       else resolvePage(sender.tab.id, msg.page || sender.tab.url);
       return false;
-    case "swiftget-resolve-video":
+    case "dios-resolve-video":
       // one of several videos on the page: its own file, or its own link
       resolveOneVideo(msg, sender.tab).then(sendResponse);
       return true;
-    case "swiftget-status":
+    case "dios-status":
       appAlive().then((ok) => sendResponse({ ok }));
       return true;
-    case "swiftget-keys":
+    case "dios-keys":
       lastKeys = { alt: !!msg.alt, ctrl: !!msg.ctrl, shift: !!msg.shift, at: Date.now() };
       return false;
-    case "swiftget-config":
+    case "dios-config":
       getConfig().then((cfg) => sendResponse((cfg && cfg.panel) || { enabled: true, skipSites: [] }));
       return true;
     default:

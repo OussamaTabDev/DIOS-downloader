@@ -4,9 +4,9 @@
 
 use crate::open_window;
 use crate::*;
-use swiftget_engine::config::{CategoryDef, ALL_COLUMNS, DEFAULT_COLUMNS};
-use swiftget_engine::ef2::{self, Ef2Item};
-use swiftget_engine::DetailsEdit;
+use dios_engine::config::{CategoryDef, ALL_COLUMNS, DEFAULT_COLUMNS};
+use dios_engine::ef2::{self, Ef2Item};
+use dios_engine::DetailsEdit;
 use crate::i18n::{t, tf};
 
 // ---------------------------------------------------------------- columns
@@ -125,7 +125,7 @@ pub(crate) fn delete_category(ui: &Ui, name: &str) {
     let mut s = ui.ctx.mgr.settings();
     let Some(c) = s.categories.iter().find(|c| c.name == name) else { return };
     if c.builtin || name == "General" {
-        message(&t("This category comes with Ezoo Download and can't be deleted (you can change its file types in Properties)."));
+        message(&t("This category comes with DIOS Downloader and can't be deleted (you can change its file types in Properties)."));
         return;
     }
     if !ask(&tf("Delete the category “{}”?\nIts files stay where they are and move to their file type's category.", &[&name])) {
@@ -336,7 +336,7 @@ fn power_now(ui: &Ui) {
     // save the list first: the downloads resume after the restart
     ui.ctx.mgr.shutdown();
     let force = ui.ctx.mgr.settings().force_shutdown;
-    swiftget_engine::system::power(action, force);
+    dios_engine::system::power(action, force);
 }
 
 // ---------------------------------------------------------------- tips
@@ -361,7 +361,7 @@ const WHATS_NEW: [&str; 16] = [
     "Playlist videos are saved with their own original titles and their original sound.",
     "Closing a download's window (X) stops the download; Resume opens it again.",
     "The download button on videos in the browser is smaller, and its size can be changed in the add-in's settings.",
-    "Updates are signed: Ezoo Download installs only updates made by its developer.",
+    "Updates are signed: DIOS Downloader installs only updates made by its developer.",
     "Downloaded files are marked as coming from the internet, so Windows warns before opening an unsafe file.",
     "Saved passwords and site logins are encrypted with your Windows account.",
     "The video helpers (yt-dlp and ffmpeg) are checked before they are used.",
@@ -369,7 +369,7 @@ const WHATS_NEW: [&str; 16] = [
 ];
 
 pub(crate) fn whats_new() {
-    let mut text = tf("Ezoo Download was updated to version {} by itself.", &[&env!("CARGO_PKG_VERSION")]);
+    let mut text = tf("DIOS Downloader was updated to version {} by itself.", &[&env!("CARGO_PKG_VERSION")]);
     text.push_str("\n\n");
     text.push_str(&t("What's new:"));
     for line in WHATS_NEW {
@@ -380,9 +380,9 @@ pub(crate) fn whats_new() {
 }
 
 const TIPS: [&str; 14] = [
-    "Copy a download link anywhere (Ctrl+C) and Ezoo Download offers to download it.",
+    "Copy a download link anywhere (Ctrl+C) and DIOS Downloader offers to download it.",
     "Play a video on a web page and click \"Download this video\" above it to choose the quality.",
-    "Right click a web page in Chrome or Edge and choose \"Download all links with Ezoo Download\" to pick files from the page.",
+    "Right click a web page in Chrome or Edge and choose \"Download all links with DIOS Downloader\" to pick files from the page.",
     "Every download uses up to 32 connections. If a server is slow with many, add it to Options > Connection > Exceptions.",
     "Make a queue (Queues > New queue) and set \"1 file at the same time\" to download files one after another.",
     "The Scheduler can start a queue at night and shut down the computer when everything is finished.",
@@ -444,7 +444,7 @@ pub(crate) fn refresh_received(ui: &Ui, id: u64, url: &str, headers: RequestHead
 pub(crate) fn export_list(mgr: &Arc<Manager>, kind: &str) {
     let ef2 = kind == "ef2";
     let Some(path) = rfd::FileDialog::new()
-        .set_file_name(if ef2 { "ezoo-download-list.ef2" } else { "ezoo-download-links.txt" })
+        .set_file_name(if ef2 { "dios-downloader-list.ef2" } else { "dios-downloader-links.txt" })
         .add_filter(if ef2 { "Download list" } else { "Text file" }, &[if ef2 { "ef2" } else { "txt" }])
         .save_file()
     else {

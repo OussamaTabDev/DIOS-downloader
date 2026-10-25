@@ -29,7 +29,7 @@ mod imp {
     impl Tray {
         pub fn new() -> Option<Tray> {
             let menu = Menu::new();
-            let show = MenuItem::new("Restore Ezoo Download", true, None);
+            let show = MenuItem::new("Restore DIOS Downloader", true, None);
             let add = MenuItem::new("Add new download…", true, None);
             let resume = MenuItem::new("Resume all downloads", true, None);
             let stop = MenuItem::new("Stop all downloads", true, None);
@@ -52,7 +52,7 @@ mod imp {
             menu.append(&exit).ok()?;
             let icon = Icon::from_rgba(include_bytes!("../ui/tray32.rgba").to_vec(), 32, 32).ok()?;
             let tray = TrayIconBuilder::new()
-                .with_tooltip("Ezoo Download")
+                .with_tooltip("DIOS Downloader")
                 .with_icon(icon)
                 .with_menu(Box::new(menu))
                 // the menu on a right click only; a double click opens the window

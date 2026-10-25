@@ -25,5 +25,29 @@ mod imp {
 
 #[cfg(not(windows))]
 mod imp {
-    pub fn play(_path: &str) {}
+    use std::process::{Command, Stdio};
+
+    /// Linux has no single sound API every desktop ships: hand the .wav to
+    /// the first player that exists (PipeWire > PulseAudio > ALSA), detached.
+    pub fn play(path: &str) {
+        for player in ["pw-play", "paplay", "aplay", "ffplay"] {
+            if Command::new("which")
+                .arg(player)
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false)
+            {
+                let mut cmd = Command::new(player);
+                cmd.arg(path).stdout(Stdio::null()).stderr(Stdio::null());
+                if player == "ffplay" {
+                    cmd.arg("-nodsp").arg("-autoexit").arg("-loglevel").arg("quiet");
+                }
+                if cmd.spawn().is_ok() {
+                    return;
+                }
+            }
+        }
+    }
 }

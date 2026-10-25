@@ -1,12 +1,12 @@
 //! Used by the release build: signs a release for the program's updater.
 //!
-//!     UPDATE_SIGNING_KEY=<64 hex> cargo run -p swiftget-engine --example sign_update -- <version> <sha256>
+//!     UPDATE_SIGNING_KEY=<64 hex> cargo run -p dios-engine --example sign_update -- <version> <sha256>
 //!
 //! prints the signature (hex) for the "sig" field of version.json. The key
 //! (Ed25519 seed) is a repository secret and never stored in the repository.
 
 use ring::signature::{Ed25519KeyPair, KeyPair};
-use swiftget_engine::selfupdate::{from_hex, signature_ok, signed_message, Release, UPDATE_PUBLIC_KEY};
+use dios_engine::selfupdate::{from_hex, signature_ok, signed_message, Release, UPDATE_PUBLIC_KEY};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

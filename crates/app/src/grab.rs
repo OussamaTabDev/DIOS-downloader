@@ -3,7 +3,7 @@
 use crate::open_window;
 use crate::*;
 use std::sync::atomic::{AtomicBool, Ordering};
-use swiftget_engine::grabber::{self, FoundFile, GrabOptions, GrabProgress};
+use dios_engine::grabber::{self, FoundFile, GrabOptions, GrabProgress};
 use tokio_util::sync::CancellationToken;
 use crate::i18n::{t, tf};
 
@@ -135,7 +135,7 @@ pub(crate) fn open_grabber(ui: &Ui) {
     open_window!(d);
 }
 
-/// "Download all links with Ezoo Download" from the browser.
+/// "Download all links with DIOS Downloader" from the browser.
 pub(crate) fn open_links(ui: &Ui, l: api::LinksRequest) {
     let Some(d) = ui.grabber.upgrade() else { return };
     reset(ui, &d, true);

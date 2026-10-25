@@ -1,13 +1,13 @@
 [package]
-name = "swiftget"
+name = "dios"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Ezoo Download – download manager (desktop app)"
+description = "DIOS Downloader – download manager (desktop app)"
 build = "build.rs"
 
 [dependencies]
-swiftget-engine = { path = "../engine" }
+dios-engine = { path = "../engine" }
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -31,7 +31,7 @@ slint-build = "~1.18"
 winresource = "0.1"
 
 [[bin]]
-name = "EzooDownload"
+name = "DIOSDownloader"
 path = "src/main.rs"
 
 [target.'cfg(windows)'.dependencies]

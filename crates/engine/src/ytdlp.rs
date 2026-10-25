@@ -409,7 +409,7 @@ fn cookie_file(cookies: &[BrowserCookie]) -> anyhow::Result<std::path::PathBuf> 
     let nanos = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
     for _ in 0..5 {
         let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!("ezoo-cookies-{}-{nanos:x}-{n}.txt", std::process::id()));
+        let path = std::env::temp_dir().join(format!("dios-cookies-{}-{nanos:x}-{n}.txt", std::process::id()));
         match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
             Ok(mut f) => {
                 f.write_all(netscape_cookies(cookies).as_bytes())?;
@@ -457,7 +457,7 @@ fn needs_login(msg: &str) -> bool {
 /// age-limited YouTube videos, ...).
 pub fn resolve(page_url: &str, cookies: Option<&[BrowserCookie]>) -> anyhow::Result<YtInfo> {
     let tool = find_tool("yt-dlp")
-        .ok_or_else(|| anyhow!("yt-dlp.exe is missing. Ezoo Download gets it by itself in a minute (internet needed), then try again"))?;
+        .ok_or_else(|| anyhow!("yt-dlp.exe is missing. DIOS Downloader gets it by itself in a minute (internet needed), then try again"))?;
     let json = match run_ytdlp(&tool, page_url, None) {
         Ok(j) => j,
         Err(e) => match cookies.filter(|c| !c.is_empty()) {
@@ -504,7 +504,7 @@ pub struct PlaylistInfo {
 /// The videos of a playlist (or channel page), without looking at each
 /// video yet (`--flat-playlist`, fast). Blocking.
 pub fn playlist(url: &str) -> anyhow::Result<PlaylistInfo> {
-    let tool = find_tool("yt-dlp").ok_or_else(|| anyhow!("yt-dlp.exe was not found next to EzooDownload.exe"))?;
+    let tool = find_tool("yt-dlp").ok_or_else(|| anyhow!("yt-dlp.exe was not found next to DIOSDownloader.exe"))?;
     let mut cmd = Command::new(&tool);
     cmd.args(playlist_args(url));
     hide_window(&mut cmd);
@@ -579,7 +579,7 @@ pub fn pick_option(options: &[YtOption], wanted: &str) -> Option<YtOption> {
 
 /// Update yt-dlp right now ("Help > Update video downloader"). Blocking.
 pub fn update_now() -> anyhow::Result<String> {
-    let tool = find_tool("yt-dlp").ok_or_else(|| anyhow!("yt-dlp.exe was not found next to EzooDownload.exe"))?;
+    let tool = find_tool("yt-dlp").ok_or_else(|| anyhow!("yt-dlp.exe was not found next to DIOSDownloader.exe"))?;
     let mut cmd = Command::new(&tool);
     cmd.args(["--ignore-config", "-U"]);
     hide_window(&mut cmd);

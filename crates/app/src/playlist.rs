@@ -57,7 +57,7 @@ pub(crate) fn wire(ui: &Ui) {
             let w2 = d.as_weak();
             let base = mgr.settings().dir_for("Video");
             std::thread::spawn(move || {
-                let result = swiftget_engine::ytdlp::playlist(&url);
+                let result = dios_engine::ytdlp::playlist(&url);
                 let _ = slint::invoke_from_event_loop(move || {
                     let Some(d) = w2.upgrade() else { return };
                     d.set_busy(false);

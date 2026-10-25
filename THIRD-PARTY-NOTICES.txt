@@ -1,4 +1,4 @@
-Ezoo Download uses the following open source components.
+DIOS Downloader uses the following open source components.
 
 Slint (user interface toolkit) - https://slint.dev
   Used under the Slint Royalty-free Desktop, Mobile, and Web Applications License 2.0.

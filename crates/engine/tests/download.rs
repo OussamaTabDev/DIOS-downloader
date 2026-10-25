@@ -4,10 +4,10 @@
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use swiftget_engine::http::{build_client, probe, Progress, Shared};
-use swiftget_engine::http_download::{self, HttpJob};
-use swiftget_engine::limiter::SpeedLimiter;
-use swiftget_engine::RequestHeaders;
+use dios_engine::http::{build_client, probe, Progress, Shared};
+use dios_engine::http_download::{self, HttpJob};
+use dios_engine::limiter::SpeedLimiter;
+use dios_engine::RequestHeaders;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
@@ -79,7 +79,7 @@ async fn segmented_download_with_pause_and_resume() {
     assert!(p.resumable);
     assert_eq!(p.file_name, "test file.bin");
 
-    let dir = std::env::temp_dir().join(format!("swiftget-test-{port}"));
+    let dir = std::env::temp_dir().join(format!("dios-test-{port}"));
     std::fs::create_dir_all(&dir).unwrap();
     let part = dir.join("out.sgpart");
     let _ = std::fs::remove_file(&part);
@@ -138,7 +138,7 @@ async fn chunked_requests_with_32_connections() {
     let port = serve(data.clone()).await;
     let url = format!("http://127.0.0.1:{port}/v.bin");
     let shared = Arc::new(Shared::new(build_client().unwrap(), SpeedLimiter::new(0)));
-    let dir = std::env::temp_dir().join(format!("swiftget-chunk-{port}"));
+    let dir = std::env::temp_dir().join(format!("dios-chunk-{port}"));
     std::fs::create_dir_all(&dir).unwrap();
     let part = dir.join("v.sgpart");
     let job = HttpJob {

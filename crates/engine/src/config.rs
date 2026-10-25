@@ -81,7 +81,7 @@ pub struct QueueSchedule {
     pub once_date: String,
     /// Monday .. Sunday
     pub days: [bool; 7],
-    /// start the queue when Ezoo Download starts
+    /// start the queue when DIOS Downloader starts
     pub on_startup: bool,
     pub stop_enabled: bool,
     pub stop_time: String,
@@ -171,7 +171,7 @@ pub fn default_categories() -> Vec<CategoryDef> {
     ]
 }
 
-/// Extensions the browser extension hands to Ezoo Download (Options > File Types).
+/// Extensions the browser extension hands to DIOS Downloader (Options > File Types).
 pub const DEFAULT_CAPTURE_EXTS: &str = "3GP 7Z AAC ACE AIF APK ARJ ASF AVI BIN BZ2 DEB DMG EXE GZ GZIP IMG ISO LZH M4A M4V MKA MKV MOV MP3 MP4 MPA MPE MPEG MPG MSI MSU OGG OGV PDF PLJ PPS PPT PPTX QT R0* R1* RA RAR RM RMVB RPM SEA SIT SITX TAR TIF TIFF TGZ WAV WEBM WMA WMV XAPK XZ Z ZIP ZST DOC DOCX XLS XLSX FLAC OPUS";
 
 /// Server with its own connection count (Options > Connection > Exceptions).
@@ -292,7 +292,7 @@ pub struct Settings {
     pub skip_addresses: Vec<String>,
     /// browser: key that lets the browser download by itself ("alt", "ctrl", "shift", "none")
     pub skip_key: String,
-    /// browser: key that forces Ezoo Download to take any link
+    /// browser: key that forces DIOS Downloader to take any link
     pub force_key: String,
     /// "Download this video" panel on web players
     pub panel_enabled: bool,
@@ -347,7 +347,7 @@ pub struct Settings {
     pub toolbar_small: bool,
     /// options-on-completion: close running programs when shutting down
     pub force_shutdown: bool,
-    /// "Add Ezoo Download to your browser" was shown once
+    /// "Add DIOS Downloader to your browser" was shown once
     pub extension_prompted: bool,
     /// start downloading at once while "Download File Info" is shown
     pub start_while_info: bool,

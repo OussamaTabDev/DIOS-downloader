@@ -162,10 +162,10 @@ const AR: &[(&str, &str)] = &[
         "حذف كل التحميلات المكتملة من القائمة؟\n(الملفات تبقى على القرص.)",
     ),
     (
-        "A short message about Ezoo Download was copied to the clipboard.\nPaste it in a chat or an e-mail to a friend.",
-        "تم نسخ رسالة قصيرة عن Ezoo Download إلى الحافظة.\nالصقها في محادثة أو بريد لصديقك.",
+        "A short message about DIOS Downloader was copied to the clipboard.\nPaste it in a chat or an e-mail to a friend.",
+        "تم نسخ رسالة قصيرة عن DIOS Downloader إلى الحافظة.\nالصقها في محادثة أو بريد لصديقك.",
     ),
-    ("Ezoo Download {}\n\nThe video downloader (yt-dlp) is up to date.\n\n{}", "Ezoo Download {}\n\nأداة الفيديو (yt-dlp) محدّثة.\n\n{}"),
+    ("DIOS Downloader {}\n\nThe video downloader (yt-dlp) is up to date.\n\n{}", "DIOS Downloader {}\n\nأداة الفيديو (yt-dlp) محدّثة.\n\n{}"),
     ("Could not update yt-dlp:\n\n{}", "تعذّر تحديث yt-dlp:\n\n{}"),
     ("Download these {} files again from the beginning?", "إعادة تحميل هذه الملفات ({}) من البداية؟"),
     ("Download “{}” again from the beginning?", "إعادة تحميل “{}” من البداية؟"),
@@ -207,8 +207,8 @@ const AR: &[(&str, &str)] = &[
     ("Give the category a name", "اكتب اسماً للتصنيف"),
     ("A category with this name already exists", "يوجد تصنيف بهذا الاسم بالفعل"),
     (
-        "This category comes with Ezoo Download and can't be deleted (you can change its file types in Properties).",
-        "هذا التصنيف أساسي في Ezoo Download ولا يمكن حذفه (يمكنك تغيير أنواع ملفاته من الخصائص).",
+        "This category comes with DIOS Downloader and can't be deleted (you can change its file types in Properties).",
+        "هذا التصنيف أساسي في DIOS Downloader ولا يمكن حذفه (يمكنك تغيير أنواع ملفاته من الخصائص).",
     ),
     (
         "Delete the category “{}”?\nIts files stay where they are and move to their file type's category.",
@@ -254,8 +254,8 @@ const AR: &[(&str, &str)] = &[
     ("Type the site and the user name", "اكتب الموقع واسم المستخدم"),
     ("Could not save: {}", "تعذّر الحفظ: {}"),
     (
-        "Restart Ezoo Download to use the new port. Set the same port in the browser extension.",
-        "أعد تشغيل Ezoo Download لاستخدام المنفذ الجديد، واضبط نفس المنفذ في إضافة المتصفح.",
+        "Restart DIOS Downloader to use the new port. Set the same port in the browser extension.",
+        "أعد تشغيل DIOS Downloader لاستخدام المنفذ الجديد، واضبط نفس المنفذ في إضافة المتصفح.",
     ),
     (
         "Paste the playlist address (https://…/playlist?list=…)",
@@ -269,41 +269,41 @@ const AR: &[(&str, &str)] = &[
     ("{} of {} videos checked", "{} من {} فيديو محدد"),
     ("{} videos", "{} فيديو"),
     ("Click to add", "اضغط للإضافة"),
-    ("Ezoo Download – download manager", "Ezoo Download – برنامج تحميل"),
+    ("DIOS Downloader – download manager", "DIOS Downloader – برنامج تحميل"),
     ("Click to add from the store", "اضغط للإضافة من المتجر"),
     ("{} is not installed on this computer.", "{} غير مثبّت على هذا الكمبيوتر."),
     ("{} opened the store page: click \"Add\" / \"Get\" there.", "فتح {} صفحة المتجر: اضغط \"إضافة\" / \"Get\" هناك."),
     ("Could not start the update:\n\n{}", "تعذّر بدء التحديث:\n\n{}"),
     ("A new version is being prepared. It is installed by itself when it is ready.", "يجري تجهيز إصدار جديد، وسيُثبَّت تلقائياً عندما يكون جاهزاً."),
     ("Could not check for updates:\n\n{}", "تعذّر البحث عن تحديثات:\n\n{}"),
-    ("Ezoo Download is up to date (version {}).", "Ezoo Download محدَّث (الإصدار {})."),
+    ("DIOS Downloader is up to date (version {}).", "DIOS Downloader محدَّث (الإصدار {})."),
     ("Version {} is available. This copy was not installed with the setup, so it cannot update itself.", "الإصدار {} متاح. هذه النسخة لم تُثبَّت بملف الإعداد، لذلك لا يمكنها تحديث نفسها."),
-    ("Version {} is available. It is being prepared now and installed by itself; Ezoo Download opens again after that.", "الإصدار {} متاح. يجري تجهيزه الآن وتثبيته تلقائياً، ثم يُفتح Ezoo Download من جديد."),
+    ("Version {} is available. It is being prepared now and installed by itself; DIOS Downloader opens again after that.", "الإصدار {} متاح. يجري تجهيزه الآن وتثبيته تلقائياً، ثم يُفتح DIOS Downloader من جديد."),
     ("Could not get the update:\n\n{}", "تعذّر الحصول على التحديث:\n\n{}"),
     (
-        "The extension folder was not found next to EzooDownload.exe. Install Ezoo Download again.",
-        "لم يتم العثور على مجلد الإضافة بجانب EzooDownload.exe. ثبّت Ezoo Download مرة أخرى.",
+        "The extension folder was not found next to DIOSDownloader.exe. Install DIOS Downloader again.",
+        "لم يتم العثور على مجلد الإضافة بجانب DIOSDownloader.exe. ثبّت DIOS Downloader مرة أخرى.",
     ),
     (
         "Firefox opened its add-ons debugging page.\n1. Click \"Load Temporary Add-on…\".\n2. Paste the folder path (Ctrl+V, it is already copied) and open the file \"manifest.json\" in it.\n\nFirefox removes add-ons loaded this way when it closes. To keep it for good the extension must be signed by Mozilla (free) – ask for the signed version.",
         "فتح Firefox صفحة تصحيح الإضافات.\n1. اضغط \"Load Temporary Add-on…\".\n2. الصق مسار المجلد (Ctrl+V، تم نسخه بالفعل) وافتح ملف \"manifest.json\" بداخله.\n\nيحذف Firefox الإضافات المحمّلة بهذه الطريقة عند إغلاقه. لتبقى دائماً يجب أن توقّعها Mozilla (مجاناً) – اطلب النسخة الموقّعة.",
     ),
     (
-        "{} opened its extensions page.\n1. Turn on \"Developer mode\" (a switch on that page).\n2. Click \"Load unpacked\".\n3. Paste the folder path (Ctrl+V – it is already copied) and click \"Select folder\".\n\nThat's all: the Ezoo Download icon appears next to the address bar. You do this only once.",
-        "فتح {} صفحة الإضافات.\n1. شغّل \"Developer mode\" (وضع المطوّر) من المفتاح الموجود في الصفحة.\n2. اضغط \"Load unpacked\".\n3. الصق مسار المجلد (Ctrl+V – تم نسخه بالفعل) واضغط \"Select folder\".\n\nهذا كل شيء: ستظهر أيقونة Ezoo Download بجانب شريط العنوان. تفعل هذا مرة واحدة فقط.",
+        "{} opened its extensions page.\n1. Turn on \"Developer mode\" (a switch on that page).\n2. Click \"Load unpacked\".\n3. Paste the folder path (Ctrl+V – it is already copied) and click \"Select folder\".\n\nThat's all: the DIOS Downloader icon appears next to the address bar. You do this only once.",
+        "فتح {} صفحة الإضافات.\n1. شغّل \"Developer mode\" (وضع المطوّر) من المفتاح الموجود في الصفحة.\n2. اضغط \"Load unpacked\".\n3. الصق مسار المجلد (Ctrl+V – تم نسخه بالفعل) واضغط \"Select folder\".\n\nهذا كل شيء: ستظهر أيقونة DIOS Downloader بجانب شريط العنوان. تفعل هذا مرة واحدة فقط.",
     ),
     // tips
     (
-        "Copy a download link anywhere (Ctrl+C) and Ezoo Download offers to download it.",
-        "انسخ أي رابط تحميل (Ctrl+C) وسيعرض عليك Ezoo Download تحميله.",
+        "Copy a download link anywhere (Ctrl+C) and DIOS Downloader offers to download it.",
+        "انسخ أي رابط تحميل (Ctrl+C) وسيعرض عليك DIOS Downloader تحميله.",
     ),
     (
         "Play a video on a web page and click \"Download this video\" above it to choose the quality.",
         "شغّل أي فيديو في صفحة ويب واضغط \"Download this video\" فوقه لتختار الجودة.",
     ),
     (
-        "Right click a web page in Chrome or Edge and choose \"Download all links with Ezoo Download\" to pick files from the page.",
-        "اضغط كليك يمين على أي صفحة في كروم أو إيدج واختر \"Download all links with Ezoo Download\" لتختار ملفات من الصفحة.",
+        "Right click a web page in Chrome or Edge and choose \"Download all links with DIOS Downloader\" to pick files from the page.",
+        "اضغط كليك يمين على أي صفحة في كروم أو إيدج واختر \"Download all links with DIOS Downloader\" لتختار ملفات من الصفحة.",
     ),
     (
         "Every download uses up to 32 connections. If a server is slow with many, add it to Options > Connection > Exceptions.",
@@ -351,10 +351,10 @@ const AR: &[(&str, &str)] = &[
     ),
     // 1.0.4
     (
-        "Firefox opened the Ezoo Download add-on.\n1. Click \"Add\" in the message Firefox shows.\n2. Then click \"OK\".\n\nThe add-on is signed by Mozilla, so it stays in Firefox after you close it and updates by itself.",
-        "فتح فايرفوكس إضافة Ezoo Download.\n1. اضغط \"إضافة\" في الرسالة التي يعرضها فايرفوكس.\n2. ثم اضغط \"حسنًا\".\n\nالإضافة موقّعة من Mozilla، لذلك تبقى في فايرفوكس بعد إغلاقه وتتحدّث وحدها.",
+        "Firefox opened the DIOS Downloader add-on.\n1. Click \"Add\" in the message Firefox shows.\n2. Then click \"OK\".\n\nThe add-on is signed by Mozilla, so it stays in Firefox after you close it and updates by itself.",
+        "فتح فايرفوكس إضافة DIOS Downloader.\n1. اضغط \"إضافة\" في الرسالة التي يعرضها فايرفوكس.\n2. ثم اضغط \"حسنًا\".\n\nالإضافة موقّعة من Mozilla، لذلك تبقى في فايرفوكس بعد إغلاقه وتتحدّث وحدها.",
     ),
-    ("Ezoo Download was updated to version {} by itself.", "تم تحديث Ezoo Download تلقائيًا إلى الإصدار {}."),
+    ("DIOS Downloader was updated to version {} by itself.", "تم تحديث DIOS Downloader تلقائيًا إلى الإصدار {}."),
     ("What's new:", "الجديد في هذا الإصدار:"),
     (
         "A \"Download this video\" button on every video of a page, and you can drag it anywhere on the video.",
@@ -373,8 +373,8 @@ const AR: &[(&str, &str)] = &[
         "خمسة مظاهر جديدة وإعداد لشفافية النافذة (عرض > المظهر).",
     ),
     (
-        "Brave is supported (Help > Add Ezoo Download to my browser).",
-        "دعم متصفح Brave (مساعدة > إضافة Ezoo Download إلى متصفحي).",
+        "Brave is supported (Help > Add DIOS Downloader to my browser).",
+        "دعم متصفح Brave (مساعدة > إضافة DIOS Downloader إلى متصفحي).",
     ),
     ("Firefox: the add-on stays in Firefox after it is closed.", "فايرفوكس: الإضافة تبقى بعد إغلاق المتصفح."),
     (
@@ -386,7 +386,7 @@ const AR: &[(&str, &str)] = &[
         "A new playlist icon, and a smaller icon on the window title.",
         "أيقونة جديدة لقوائم التشغيل، وأيقونة أصغر في شريط عنوان النافذة.",
     ),
-    ("Support Ezoo Download with PayPal from Help > About.", "ادعم Ezoo Download عبر PayPal من مساعدة > حول."),
+    ("Support DIOS Downloader with PayPal from Help > About.", "ادعم DIOS Downloader عبر PayPal من مساعدة > حول."),
     // 1.0.5
     (
         "The main window can be maximized to the full screen.",
@@ -417,8 +417,8 @@ const AR: &[(&str, &str)] = &[
         "تعذّر البحث عن تحديثات",
     ),
     (
-        "Ezoo Download is up to date",
-        "Ezoo Download محدَّث",
+        "DIOS Downloader is up to date",
+        "DIOS Downloader محدَّث",
     ),
     (
         "Version {} is the newest version.",
@@ -441,8 +441,8 @@ const AR: &[(&str, &str)] = &[
         "جارٍ تثبيت الإصدار {}…",
     ),
     (
-        "Ezoo Download closes now and opens again when it is installed.",
-        "سيُغلق Ezoo Download الآن ويفتح من جديد بعد التثبيت.",
+        "DIOS Downloader closes now and opens again when it is installed.",
+        "سيُغلق DIOS Downloader الآن ويفتح من جديد بعد التثبيت.",
     ),
     (
         "Could not get the update",
@@ -481,8 +481,8 @@ const AR: &[(&str, &str)] = &[
         "زر التحميل على الفيديوهات في المتصفح أصبح أصغر، ويمكن تغيير حجمه من إعدادات الإضافة.",
     ),
     (
-        "Updates are signed: Ezoo Download installs only updates made by its developer.",
-        "التحديثات أصبحت موقّعة: Ezoo Download لا يثبّت إلا التحديثات الصادرة من مطوّره.",
+        "Updates are signed: DIOS Downloader installs only updates made by its developer.",
+        "التحديثات أصبحت موقّعة: DIOS Downloader لا يثبّت إلا التحديثات الصادرة من مطوّره.",
     ),
     (
         "Downloaded files are marked as coming from the internet, so Windows warns before opening an unsafe file.",

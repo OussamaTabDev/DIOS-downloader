@@ -95,7 +95,7 @@
     const page = linkFor(v);
     if (page !== lastPage) {
       lastPage = page;
-      chrome.runtime.sendMessage({ type: "swiftget-video-seen", page }).catch?.(() => {});
+      chrome.runtime.sendMessage({ type: "dios-video-seen", page }).catch?.(() => {});
     }
   }
 
@@ -263,13 +263,13 @@
         // its own post / video link, or its own file; the page only when
         // neither is there
         {
-          type: "swiftget-resolve-video",
+          type: "dios-resolve-video",
           page: ownLink(b.video) || (directSrc(b.video) ? "" : location.href),
           src: directSrc(b.video),
         },
         (res) => {
           b.loading = false;
-          if (chrome.runtime.lastError || !res) return renderOne(b, "Ezoo Download is not running — open the app and try again.", true);
+          if (chrome.runtime.lastError || !res) return renderOne(b, "DIOS Downloader is not running — open the app and try again.", true);
           if (res.error) return renderOne(b, res.error, true);
           b.own = res.items || [];
           renderOne(b);
@@ -362,11 +362,11 @@
 
   function download(b, m) {
     const fileName = `${cleanTitle()}.${m.ext || "mp4"}`;
-    chrome.runtime.sendMessage({ type: "swiftget-download", item: m, title: document.title, fileName }, (res) => {
+    chrome.runtime.sendMessage({ type: "dios-download", item: m, title: document.title, fileName }, (res) => {
       if (chrome.runtime.lastError || !res || !res.ok) {
-        flashOne(b, "Ezoo Download is not running — open the app and try again.", true);
+        flashOne(b, "DIOS Downloader is not running — open the app and try again.", true);
       } else {
-        flashOne(b, "Sent to Ezoo Download ✔", false);
+        flashOne(b, "Sent to DIOS Downloader ✔", false);
       }
     });
   }
@@ -405,12 +405,12 @@
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (msg.type === "swiftget-media") update(msg.items);
-    if (msg.type === "swiftget-collect-links") {
+    if (msg.type === "dios-media") update(msg.items);
+    if (msg.type === "dios-collect-links") {
       sendResponse(collectLinks(!!msg.selection));
       return true;
     }
-    if (msg.type === "swiftget-open-panel") {
+    if (msg.type === "dios-open-panel") {
       const v = biggestVideo();
       let b = v && bubbles.get(v);
       if (v && !b) b = makeBubble(v);
@@ -424,7 +424,7 @@
     }
     return false;
   });
-  chrome.runtime.sendMessage({ type: "swiftget-config" }, (res) => {
+  chrome.runtime.sendMessage({ type: "dios-config" }, (res) => {
     if (!chrome.runtime.lastError && res) {
       panel = res;
       if (!panelAllowed()) {
@@ -437,12 +437,12 @@
   addEventListener(
     "mousedown",
     (e) => {
-      chrome.runtime.sendMessage({ type: "swiftget-keys", alt: e.altKey, ctrl: e.ctrlKey, shift: e.shiftKey }).catch?.(() => {});
+      chrome.runtime.sendMessage({ type: "dios-keys", alt: e.altKey, ctrl: e.ctrlKey, shift: e.shiftKey }).catch?.(() => {});
     },
     true
   );
   // media detected before this script loaded
-  chrome.runtime.sendMessage({ type: "swiftget-media-request" }, (res) => {
+  chrome.runtime.sendMessage({ type: "dios-media-request" }, (res) => {
     if (!chrome.runtime.lastError) update(res);
   });
 

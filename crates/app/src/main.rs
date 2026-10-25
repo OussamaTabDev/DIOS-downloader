@@ -1,4 +1,4 @@
-// Ezoo Download — desktop app.
+// DIOS Downloader — desktop app.
 // No console window in release builds on Windows.
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
@@ -26,15 +26,15 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use swiftget_engine::config::MAIN_QUEUE;
+use dios_engine::config::MAIN_QUEUE;
 use i18n::{t, tf};
-use swiftget_engine::filename;
-use swiftget_engine::{
+use dios_engine::filename;
+use dios_engine::{
     default_data_dir, fmt_duration, fmt_size, AfterDone, DownloadKind, DownloadView, Event, Manager, NewDownload,
     ProbeResult, RequestHeaders, Settings, Status,
 };
 
-pub(crate) const APP: &str = "Ezoo Download";
+pub(crate) const APP: &str = "DIOS Downloader";
 
 /// What the browser extension sends along with a video link.
 #[derive(Default, Clone)]
@@ -170,7 +170,7 @@ fn main() -> anyhow::Result<()> {
         .build()?;
     let mgr = Manager::new(rt.handle().clone(), data_dir.clone())?;
     // yt-dlp and ffmpeg: put back if missing, update silently once a day
-    swiftget_engine::tools::spawn_updater(rt.handle(), mgr.client(), data_dir.clone());
+    dios_engine::tools::spawn_updater(rt.handle(), mgr.client(), data_dir.clone());
 
     let main = MainWindow::new()?;
     let add = AddDialog::new()?;
@@ -850,11 +850,11 @@ fn wire_main(ui: &Ui) {
     main.on_update_tools(move || {
         // ffmpeg too, right now (removing the stamps makes it check)
         let _ = std::fs::remove_file(tools_dir.join("ffmpeg-checked"));
-        tools_rt.spawn(swiftget_engine::tools::update_all(tools_client.clone(), tools_dir.clone()));
+        tools_rt.spawn(dios_engine::tools::update_all(tools_client.clone(), tools_dir.clone()));
         std::thread::spawn(|| {
-            let text = match swiftget_engine::ytdlp::update_now() {
+            let text = match dios_engine::ytdlp::update_now() {
                 Ok(out) => tf(
-                    "Ezoo Download {}\n\nThe video downloader (yt-dlp) is up to date.\n\n{}",
+                    "DIOS Downloader {}\n\nThe video downloader (yt-dlp) is up to date.\n\n{}",
                     &[&env!("CARGO_PKG_VERSION"), &out],
                 ),
                 Err(e) => tf("Could not update yt-dlp:\n\n{}", &[&format!("{e:#}")]),
@@ -1093,7 +1093,7 @@ fn handle_api(ui: &Ui, event: api::ApiEvent) {
                 auth: None,
             };
             if let Some(list) = &req.headers {
-                swiftget_engine::ytdlp::apply_headers(&mut headers, list);
+                dios_engine::ytdlp::apply_headers(&mut headers, list);
             }
             // "Refresh download address": this is the new link we waited for
             if let Some(id) = ui.refresh_id.get() {
@@ -1736,7 +1736,7 @@ fn save_columns(ui: &Ui) {
     let mut order: Vec<String> = cols.iter().map(|c| c.key.to_string()).collect();
     // hidden columns keep their place at the end
     let rest: Vec<String> =
-        s.column_order.iter().cloned().chain(swiftget_engine::config::ALL_COLUMNS.iter().map(|k| k.to_string())).collect();
+        s.column_order.iter().cloned().chain(dios_engine::config::ALL_COLUMNS.iter().map(|k| k.to_string())).collect();
     for k in rest {
         if !order.contains(&k) {
             order.push(k);
@@ -2237,7 +2237,7 @@ fn sha256_of(path: &Path) -> std::io::Result<String> {
 pub(crate) fn open_with(path: &Path) {
     #[cfg(windows)]
     {
-        let _ = std::process::Command::new(swiftget_engine::system::windows_tool("rundll32.exe"))
+        let _ = std::process::Command::new(dios_engine::system::windows_tool("rundll32.exe"))
             .arg("shell32.dll,OpenAs_RunDLL")
             .arg(path)
             .spawn();
@@ -2321,7 +2321,7 @@ pub(crate) fn reveal_in_folder(v: &DownloadView) {
     {
         use std::os::windows::process::CommandExt;
         if v.status == Status::Completed && v.save_path.exists() {
-            let _ = std::process::Command::new(swiftget_engine::system::windows_tool("explorer.exe"))
+            let _ = std::process::Command::new(dios_engine::system::windows_tool("explorer.exe"))
                 .raw_arg(format!("/select,\"{}\"", v.save_path.display()))
                 .spawn();
             return;

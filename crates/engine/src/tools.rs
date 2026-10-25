@@ -1,6 +1,6 @@
-//! The helper programs that come with Ezoo Download: yt-dlp (finds the video
+//! The helper programs that come with DIOS Downloader: yt-dlp (finds the video
 //! links) and ffmpeg (joins video + audio), both from their GitHub releases. They live in the "tools" folder
-//! of the install folder. Once a day, silently, Ezoo Download checks for new
+//! of the install folder. Once a day, silently, DIOS Downloader checks for new
 //! versions and updates them, and puts them back if one went missing.
 
 use crate::mux::hide_window;
@@ -9,6 +9,8 @@ use std::process::Command;
 use std::time::{Duration, SystemTime};
 
 const YTDLP_URL: &str = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
+/// the standalone Linux build of yt-dlp
+const YTDLP_LINUX_URL: &str = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux";
 /// the SHA-256 of every file of that release, published by yt-dlp
 const YTDLP_SUMS_URL: &str = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS";
 /// the SHA-256 of every build, published with the ffmpeg builds
@@ -31,17 +33,24 @@ struct GhRelease {
     assets: Vec<GhAsset>,
 }
 
-/// The newest stable 64-bit Windows build: "ffmpeg-n7.1-latest-win64-gpl-7.1.zip"
-/// (the highest n<version>), else the master build.
-fn pick_ffmpeg(assets: &[GhAsset]) -> Option<&GhAsset> {
-    let re = regex::Regex::new(r"^ffmpeg-n([0-9.]+)-latest-win64-gpl-[0-9.]+\.zip$").ok()?;
+/// The newest stable 64-bit build for the platform: on Windows
+/// "ffmpeg-n7.1-latest-win64-gpl-7.1.zip" (the highest n<version>), on Linux
+/// the same naming with linux64 tar.xz; else the master build.
+fn pick_ffmpeg_in(assets: &[GhAsset], linux: bool) -> Option<&GhAsset> {
+    let pattern = if linux {
+        r"^ffmpeg-n([0-9.]+)-latest-linux64-gpl-[0-9.]+\.tar\.xz$"
+    } else {
+        r"^ffmpeg-n([0-9.]+)-latest-win64-gpl-[0-9.]+\.zip$"
+    };
+    let re = regex::Regex::new(pattern).ok()?;
     let key = |v: &str| v.split('.').map(|p| p.parse::<u64>().unwrap_or(0)).collect::<Vec<_>>();
+    let master = if linux { "ffmpeg-master-latest-linux64-gpl.tar.xz" } else { "ffmpeg-master-latest-win64-gpl.zip" };
     assets
         .iter()
         .filter_map(|a| re.captures(&a.name).map(|c| (key(&c[1]), a)))
         .max_by(|x, y| x.0.cmp(&y.0))
         .map(|(_, a)| a)
-        .or_else(|| assets.iter().find(|a| a.name == "ffmpeg-master-latest-win64-gpl.zip"))
+        .or_else(|| assets.iter().find(|a| a.name == master))
 }
 
 fn exe(name: &str) -> String {
@@ -59,7 +68,7 @@ pub fn tool_dirs() -> Vec<PathBuf> {
         v.push(dir.join("tools"));
         v.push(dir);
     }
-    if let Some(p) = directories::ProjectDirs::from("com", "Ezoo", "EzooDownload") {
+    if let Some(p) = directories::ProjectDirs::from("com", "DIOS", "DIOSDownloader") {
         v.push(p.data_dir().join("tools"));
     }
     v
@@ -85,7 +94,7 @@ fn writable_dir(name: &str) -> Option<PathBuf> {
 }
 
 fn can_write(dir: &Path) -> bool {
-    let probe = dir.join(".ezoo-write-test");
+    let probe = dir.join(".dios-write-test");
     let ok = std::fs::write(&probe, b"x").is_ok();
     let _ = std::fs::remove_file(&probe);
     ok
@@ -177,12 +186,16 @@ fn replace(new: &Path, target: &Path) -> anyhow::Result<()> {
 /// yt-dlp missing: get it. Present: `yt-dlp -U` (at most once a day).
 async fn yt_dlp(client: &reqwest::Client, data_dir: &Path) {
     if bundled("yt-dlp").is_none() {
-        if cfg!(windows) {
-            if let Some(dir) = writable_dir("yt-dlp") {
-                if let Ok(sums) = get_text(client, YTDLP_SUMS_URL).await {
-                    if let Some(sum) = sum_for(&sums, "yt-dlp.exe") {
-                        let _ = download(client, YTDLP_URL, &dir.join(exe("yt-dlp")), &sum).await;
-                    }
+        // Windows gets yt-dlp.exe, Linux the standalone yt-dlp_linux build
+        let (asset, url) = if cfg!(windows) {
+            ("yt-dlp.exe", YTDLP_URL)
+        } else {
+            ("yt-dlp_linux", YTDLP_LINUX_URL)
+        };
+        if let Some(dir) = writable_dir("yt-dlp") {
+            if let Ok(sums) = get_text(client, YTDLP_SUMS_URL).await {
+                if let Some(sum) = sum_for(&sums, asset) {
+                    let _ = download(client, url, &dir.join(exe("yt-dlp")), &sum).await;
                 }
             }
         }
@@ -209,9 +222,6 @@ async fn yt_dlp(client: &reqwest::Client, data_dir: &Path) {
 /// ffmpeg: compare with the newest release build and replace it when
 /// there's a newer one (or when it's missing).
 async fn ffmpeg(client: &reqwest::Client, data_dir: &Path) -> anyhow::Result<()> {
-    if !cfg!(windows) {
-        return Ok(());
-    }
     let present = bundled("ffmpeg");
     let stamp = data_dir.join("ffmpeg-checked");
     if present.is_some() && !due(&stamp, Duration::from_secs(20 * 3600)) {
@@ -227,7 +237,7 @@ async fn ffmpeg(client: &reqwest::Client, data_dir: &Path) -> anyhow::Result<()>
         .text()
         .await?;
     let release: GhRelease = serde_json::from_str(&text)?;
-    let Some(asset) = pick_ffmpeg(&release.assets) else {
+    let Some(asset) = pick_ffmpeg_in(&release.assets, !cfg!(windows)) else {
         anyhow::bail!("no ffmpeg build in the release");
     };
     // name + date: changes whenever a new build is published
@@ -250,19 +260,25 @@ async fn ffmpeg(client: &reqwest::Client, data_dir: &Path) -> anyhow::Result<()>
         let _ = std::fs::write(&stamp, b"ok");
         return Ok(());
     }
-    // download the zip, unpack it with Windows' own tar, take ffmpeg.exe
-    let work = std::env::temp_dir().join(format!("ezoo-ffmpeg-{}", std::process::id()));
+    // download the archive, unpack it with tar, take the ffmpeg binary
+    let work = std::env::temp_dir().join(format!("dios-ffmpeg-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&work);
     std::fs::create_dir_all(&work)?;
-    let zip = work.join("ffmpeg.zip");
+    let archive_name = if cfg!(windows) { "ffmpeg.zip" } else { "ffmpeg.tar.xz" };
+    let zip = work.join(archive_name);
     let sum = sum_for(&get_text(client, &sums_url).await?, &asset.name)
         .ok_or_else(|| anyhow::anyhow!("no checksum for {}", asset.name))?;
     download(client, &zip_url, &zip, &sum).await?;
     let (zip2, work2) = (zip.clone(), work.clone());
     let unpacked = tokio::task::spawn_blocking(move || {
-        let mut cmd = Command::new(crate::system::windows_tool("tar.exe"));
+        let mut cmd = if cfg!(windows) {
+            let mut c = Command::new(crate::system::windows_tool("tar.exe"));
+            hide_window(&mut c);
+            c
+        } else {
+            Command::new("tar")
+        };
         cmd.arg("-xf").arg(&zip2).arg("-C").arg(&work2);
-        hide_window(&mut cmd);
         cmd.output().map(|o| o.status.success()).unwrap_or(false)
     })
     .await
@@ -277,7 +293,7 @@ async fn ffmpeg(client: &reqwest::Client, data_dir: &Path) -> anyhow::Result<()>
             let _ = std::fs::write(&stamp, b"ok");
             Ok(())
         }
-        None => Err(anyhow::anyhow!("ffmpeg.exe was not found in the download")),
+        None => Err(anyhow::anyhow!("ffmpeg was not found in the download")),
     };
     let _ = std::fs::remove_dir_all(&work);
     result
@@ -335,13 +351,14 @@ mod tests {
             a("ffmpeg-n7.1-latest-win64-gpl-shared-7.1.zip"),
             a("ffmpeg-n7.1-latest-linux64-gpl-7.1.tar.xz"),
         ];
-        assert_eq!(pick_ffmpeg(&list).unwrap().name, "ffmpeg-n7.1-latest-win64-gpl-7.1.zip");
-        assert_eq!(pick_ffmpeg(&list[..1]).unwrap().name, "ffmpeg-master-latest-win64-gpl.zip");
+        assert_eq!(pick_ffmpeg_in(&list, false).unwrap().name, "ffmpeg-n7.1-latest-win64-gpl-7.1.zip");
+        assert_eq!(pick_ffmpeg_in(&list[..1], false).unwrap().name, "ffmpeg-master-latest-win64-gpl.zip");
+        assert_eq!(pick_ffmpeg_in(&list, true).unwrap().name, "ffmpeg-n7.1-latest-linux64-gpl-7.1.tar.xz");
     }
 
     #[test]
     fn replace_and_find() {
-        let dir = std::env::temp_dir().join(format!("ezoo-tools-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("dios-tools-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("a/b")).unwrap();
         std::fs::write(dir.join("a/b/ffmpeg.exe"), b"new").unwrap();

@@ -1,13 +1,13 @@
-; Ezoo Download — Windows installer (Inno Setup 6)
-; Built automatically by BUILD.bat -> dist\EzooDownload-Setup.exe
+; DIOS Downloader — Windows installer (Inno Setup 6)
+; Built automatically by BUILD.bat -> dist\DIOSDownloader-Setup.exe
 ;
 ; Installs for the current user (no admin needed) into
-;   %LOCALAPPDATA%\Programs\Ezoo Download
+;   %LOCALAPPDATA%\Programs\DIOS Downloader
 ; so yt-dlp can update itself. Adds a Start Menu folder, an optional desktop
 ; shortcut, "start with Windows", and a normal uninstaller.
 
-#define MyAppName "Ezoo Download"
-#define MyAppExe "EzooDownload.exe"
+#define MyAppName "DIOS Downloader"
+#define MyAppExe "DIOSDownloader.exe"
 ; BUILD.bat passes the version of Cargo.toml: /DMyAppVersion=1.0.1
 ; the files that go into the setup (gathered by BUILD.bat / the CI)
 #ifndef Stage
@@ -18,28 +18,28 @@
 #endif
 
 [Setup]
-AppId={{F5837666-2925-4FD9-8CE9-728BE9C5D7E4}
+AppId={{69B6547C-3877-48CA-B530-BC38B2C40E24}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
-AppPublisher=Ahmed Ezzat
-DefaultDirName={localappdata}\Programs\Ezoo Download
+AppPublisher=DIOS Downloader Team
+DefaultDirName={localappdata}\Programs\DIOS Downloader
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=..\dist
-OutputBaseFilename=EzooDownload-Setup
+OutputBaseFilename=DIOSDownloader-Setup
 #ifndef NoIcon
 SetupIconFile=..\crates\app\icon.ico
 #endif
 UninstallDisplayIcon={app}\{#MyAppExe}
 VersionInfoVersion={#MyAppVersion}
-VersionInfoCompany=Ezoo
-VersionInfoDescription=Ezoo Download Setup
+VersionInfoCompany=DIOS
+VersionInfoDescription=DIOS Downloader Setup
 VersionInfoProductName={#MyAppName}
 VersionInfoProductVersion={#MyAppVersion}
-VersionInfoCopyright=Copyright (C) 2026 Ahmed Ezzat
-AppPublisherURL=https://www.youtube.com/@Ezoo-Tech
+VersionInfoCopyright=Copyright (C) 2026 DIOS Downloader Team
+AppPublisherURL=https://github.com/OussamaTabDev/DIOS-downloader
 UninstallDisplayName={#MyAppName}
 Compression=lzma2/max
 SolidCompression=yes
@@ -54,7 +54,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
-Name: "autostart"; Description: "Start Ezoo Download when Windows starts (recommended)"; GroupDescription: "Startup:"
+Name: "autostart"; Description: "Start DIOS Downloader when Windows starts (recommended)"; GroupDescription: "Startup:"
 
 [Files]
 Source: "{#Stage}\{#MyAppExe}"; DestDir: "{app}"; Flags: ignoreversion
@@ -63,7 +63,7 @@ Source: "{#Stage}\THIRD-PARTY-NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversi
 Source: "{#Stage}\tools\*"; DestDir: "{app}\tools"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#Stage}\extension\*"; DestDir: "{app}\extension"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#Stage}\extension-firefox\*"; DestDir: "{app}\extension-firefox"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#Stage}\ezoo-download-firefox.xpi"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "{#Stage}\dios-downloader-firefox.xpi"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 ; system runtime files, installed only when they are missing (see [Code])
 #ifexist "..\build-cache\redist\vc_redist.x64.exe"
   #define HaveRedist
@@ -83,18 +83,18 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: deskto
 
 [Registry]
 ; tells the app the installer already decided about "start with Windows"
-Root: HKCU; Subkey: "Software\Ezoo\EzooDownload"; ValueType: string; ValueName: "Installed"; ValueData: "1"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\DIOS\DIOSDownloader"; ValueType: string; ValueName: "Installed"; ValueData: "1"; Flags: uninsdeletekey
 ; start in the background (next to the clock) when the user signs in
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "EzooDownload"; ValueData: """{app}\{#MyAppExe}"" --background"; Flags: uninsdeletevalue; Tasks: autostart
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "DIOSDownloader"; ValueData: """{app}\{#MyAppExe}"" --background"; Flags: uninsdeletevalue; Tasks: autostart
 
 [Run]
-Filename: "{app}\{#MyAppExe}"; Description: "Open Ezoo Download now"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExe}"; Description: "Open DIOS Downloader now"; Flags: nowait postinstall skipifsilent
 ; after an automatic update: start the new version again
 Filename: "{app}\{#MyAppExe}"; Flags: nowait; Check: IsAutoUpdate
 
 
 [UninstallRun]
-Filename: "{cmd}"; Parameters: "/C taskkill /IM {#MyAppExe} /F"; Flags: runhidden; RunOnceId: "StopEzoo"
+Filename: "{cmd}"; Parameters: "/C taskkill /IM {#MyAppExe} /F"; Flags: runhidden; RunOnceId: "StopDIOS"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\extension"

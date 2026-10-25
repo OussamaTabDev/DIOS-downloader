@@ -1,4 +1,4 @@
-//! Ezoo Download engine.
+//! DIOS Downloader engine.
 //!
 //! * `segments`       – splitting a file between connections (dynamic segmentation)
 //! * `http_download`  – multi-connection downloader with resume and retries

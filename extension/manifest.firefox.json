@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Ezoo Download",
-  "version": "1.0.5",
-  "description": "Ezoo Download extension.",
+  "name": "DIOS Downloader",
+  "version": "1.1.0",
+  "description": "DIOS Downloader extension.",
   "permissions": [
     "downloads",
     "cookies",
@@ -21,7 +21,7 @@
     ]
   },
   "action": {
-    "default_title": "Ezoo Download",
+    "default_title": "DIOS Downloader",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
@@ -53,9 +53,9 @@
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "ezoo-download@ezoo-tech.com",
+      "id": "dios-downloader@dios.com",
       "strict_min_version": "140.0",
-      "update_url": "https://github.com/AhmedEzo686/ezoo-download/releases/latest/download/firefox-updates.json",
+      "update_url": "https://github.com/OussamaTabDev/DIOS-downloader/releases/latest/download/firefox-updates.json",
       "data_collection_permissions": {
         "required": [
           "none"
