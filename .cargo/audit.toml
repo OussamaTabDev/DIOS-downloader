@@ -1,0 +1,14 @@
+# Configuration for `cargo audit` (the CI dependency check).
+# cargo-audit reads this file from .cargo/audit.toml next to the workspace.
+
+[advisories]
+# RUSTSEC-2026-0293 — ringbuf < 0.5.2: double free / use-after-free in
+# Consumer::skip / Consumer::clear, but only when an element's Drop impl
+# PANICS. The only user of ringbuf here is librqbit-utp 0.7.0 (uTP transport
+# of the torrent engine), whose buffered elements are plain byte buffers
+# whose Drop cannot panic — the flaw is unreachable in this program.
+#
+# There is no upgrade path yet: librqbit 9.0.1 is the newest release and it
+# pins ringbuf 0.4.x. Remove this entry as soon as a librqbit release moves
+# to ringbuf >= 0.5.2, and let the check fail again as designed.
+ignore = ["RUSTSEC-2026-0293"]

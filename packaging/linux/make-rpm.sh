@@ -46,7 +46,10 @@ RELEASE="${RPM_RELEASE:-1}"
 echo "==> Building dios-downloader ${RPM_VERSION}-${RELEASE} (x86_64)"
 
 # ---------------------------------------------------------------- sandbox
-WORK="build-cache/rpm"
+# Absolute paths everywhere: rpmbuild runs the %install scriptlet from its
+# own BUILD directory, so a relative payload path would point nowhere
+# (this is exactly the 'cannot stat build-cache/rpm/payload/.' failure).
+WORK="$PWD/build-cache/rpm"
 rm -rf "$WORK"
 SPEC="$WORK/SPECS/dios-downloader.spec"
 mkdir -p "$WORK"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
@@ -75,8 +78,7 @@ fi
 
 # ---------------------------------------------------------------- spec
 cat > "$SPEC" <<EOF
-%define _binary_payload w9.zstdio
-%define _topdir %(echo $WORK)
+%define _topdir $WORK
 Name:           dios-downloader
 Version:        ${RPM_VERSION}
 Release:        ${RELEASE}%{?dist}
@@ -84,6 +86,8 @@ Summary:        Fast download manager with multi-connection downloads
 License:        MIT
 URL:            https://github.com/OussamaTabDev/DIOS-downloader
 # payloads are already compiled: no BuildArch trickery, no build step
+# (no _binary_payload override: the distro default always works, while a
+#  hard-coded zstd setting breaks on rpm builds without zstd support)
 AutoReqProv:    yes
 
 %description
