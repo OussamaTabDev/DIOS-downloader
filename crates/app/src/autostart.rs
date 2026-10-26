@@ -3,38 +3,49 @@
 
 #[cfg(windows)]
 mod imp {
-    use std::os::windows::process::CommandExt;
-    use std::process::Command;
+    // The registry is read and written directly: starting reg.exe took a
+    // second or more on some computers (antivirus) every time Options opened.
+    use windows_sys::Win32::System::Registry::{
+        RegDeleteKeyValueW, RegGetValueW, RegSetKeyValueW, HKEY_CURRENT_USER, REG_SZ, RRF_RT_REG_SZ,
+    };
 
-    const KEY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
+    const KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
     const NAME: &str = "DIOSDownloader";
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-    fn reg(args: &[&str]) -> bool {
-        Command::new(dios_engine::system::windows_tool("reg.exe"))
-            .args(args)
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
+    fn wide(s: &str) -> Vec<u16> {
+        s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    fn exists(key: &str, name: &str) -> bool {
+        let (key, name) = (wide(key), wide(name));
+        let mut size: u32 = 0;
+        // SAFETY: NUL-terminated wide strings; only the size of the value is asked for
+        unsafe {
+            RegGetValueW(HKEY_CURRENT_USER, key.as_ptr(), name.as_ptr(), RRF_RT_REG_SZ, std::ptr::null_mut(), std::ptr::null_mut(), &mut size) == 0
+        }
     }
 
     pub fn is_enabled() -> bool {
-        reg(&["query", KEY, "/v", NAME])
+        exists(KEY, NAME)
     }
 
     /// Installed with the setup program (which asked about autostart itself).
     pub fn installed_by_setup() -> bool {
-        reg(&["query", r"HKCU\Software\DIOS\DIOSDownloader", "/v", "Installed"])
+        exists(r"Software\DIOS\DIOSDownloader", "Installed")
     }
 
     pub fn set(enabled: bool) -> bool {
+        let (key, name) = (wide(KEY), wide(NAME));
         if enabled {
             let Ok(exe) = std::env::current_exe() else { return false };
-            let value = format!("\"{}\" --background", exe.display());
-            reg(&["add", KEY, "/v", NAME, "/t", "REG_SZ", "/d", &value, "/f"])
+            let value = wide(&format!("\"{}\" --background", exe.display()));
+            // SAFETY: the value is a NUL-terminated wide string, its size in bytes is passed
+            unsafe {
+                RegSetKeyValueW(HKEY_CURRENT_USER, key.as_ptr(), name.as_ptr(), REG_SZ, value.as_ptr().cast(), (value.len() * 2) as u32) == 0
+            }
         } else {
-            !is_enabled() || reg(&["delete", KEY, "/v", NAME, "/f"])
+            // SAFETY: NUL-terminated wide strings
+            !is_enabled() || unsafe { RegDeleteKeyValueW(HKEY_CURRENT_USER, key.as_ptr(), name.as_ptr()) == 0 }
         }
     }
 }

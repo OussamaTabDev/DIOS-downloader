@@ -19,6 +19,9 @@ msgstr "Ouvrir avec…"
 msgid "Open folder"
 msgstr "Ouvrir le dossier"
 
+msgid "Torrent contents…"
+msgstr "Torrent contents…"
+
 msgid "Resume download"
 msgstr "Reprendre le téléchargement"
 
@@ -127,6 +130,15 @@ msgstr "Ajouter un téléchargement…"
 msgid "Add batch download…"
 msgstr "Ajouter un téléchargement groupé…"
 
+msgid "Add torrent file…"
+msgstr "Add torrent file…"
+
+msgid "Add magnet link…"
+msgstr "Add magnet link…"
+
+msgid "Paste download link"
+msgstr "Paste download link"
+
 msgid "Add batch download from clipboard"
 msgstr "Ajouter un téléchargement groupé depuis le presse-papiers"
 
@@ -156,6 +168,9 @@ msgstr "Depuis un fichier texte…"
 
 msgid "Open download folder"
 msgstr "Ouvrir le dossier des téléchargements"
+
+msgid "Hide to tray"
+msgstr "Masquer dans la zone de notification"
 
 msgid "Exit"
 msgstr "Quitter"
@@ -225,6 +240,9 @@ msgstr "Options…"
 
 msgid "View"
 msgstr "Affichage"
+
+msgid "Filter the list…"
+msgstr "Filtrer la liste…"
 
 msgid "Show categories"
 msgstr "Afficher les catégories"
@@ -319,6 +337,12 @@ msgstr "Ajouter URL"
 msgid "Add Batch"
 msgstr "Ajout groupé"
 
+msgid "Add Torrent"
+msgstr "Add Torrent"
+
+msgid "Paste"
+msgstr "Paste"
+
 msgid "Resume"
 msgstr "Reprendre"
 
@@ -358,8 +382,8 @@ msgstr "Aspirateur"
 msgid "Playlist"
 msgstr "Playlist"
 
-msgid "Filter the list…"
-msgstr "Filtrer la liste…"
+msgid "Hide"
+msgstr "Masquer"
 
 msgid "Categories"
 msgstr "Catégories"
@@ -390,6 +414,9 @@ msgstr "Rien ne correspond à « {} »."
 
 msgid "No downloads here.\nClick “Add URL”, copy a link, or download something in your browser."
 msgstr "Aucun téléchargement ici.\nCliquez sur « Ajouter URL », copiez un lien ou téléchargez quelque chose dans votre navigateur."
+
+msgid "Drop to add to DIOS Downloader"
+msgstr "Drop to add to DIOS Downloader"
 
 msgid "Download File Info"
 msgstr "Informations sur le fichier"
@@ -1162,6 +1189,21 @@ msgstr "Mo toutes les"
 msgid "hours"
 msgstr "heures"
 
+msgid "Torrents (BitTorrent)"
+msgstr "Torrents (BitTorrent)"
+
+msgid "Share finished torrents (seeding)"
+msgstr "Share finished torrents (seeding)"
+
+msgid "Download limit for all torrents (KB/s, 0 = off)"
+msgstr "Download limit for all torrents (KB/s, 0 = off)"
+
+msgid "Upload limit for all torrents (KB/s, 0 = off)"
+msgstr "Upload limit for all torrents (KB/s, 0 = off)"
+
+msgid "Torrents connect to many computers; the limits apply to all of them together."
+msgstr "Torrents connect to many computers; the limits apply to all of them together."
+
 msgid "No proxy"
 msgstr "Pas de proxy"
 
@@ -1311,6 +1353,3 @@ msgstr "Vous aimez DIOS Downloader ? Vous pouvez soutenir son développement :"
 
 msgid "Support with PayPal"
 msgstr "Soutenir avec PayPal"
-
-msgid "Hide"
-msgstr "Masquer"

@@ -74,9 +74,33 @@ pub fn tool_dirs() -> Vec<PathBuf> {
     v
 }
 
+/// Linux/macOS: a downloaded program is only a file until it has the "execute"
+/// permission - without it starting it fails with "Permission denied (os error 13)".
+/// Sets it (rwxr-xr-x) when it is missing; does nothing on Windows or when the file
+/// is not ours to change.
+pub fn ensure_executable(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(meta) = std::fs::metadata(path) {
+            let mode = meta.permissions().mode();
+            if meta.is_file() && mode & 0o111 == 0 {
+                let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode | 0o755));
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = path;
+}
+
 /// A tool shipped with the app (not one somewhere on PATH).
 pub fn bundled(name: &str) -> Option<PathBuf> {
-    tool_dirs().into_iter().map(|d| d.join(exe(name))).find(|p| p.exists())
+    let found = tool_dirs().into_iter().map(|d| d.join(exe(name))).find(|p| p.exists());
+    if let Some(p) = &found {
+        // copies downloaded by earlier versions have no execute permission
+        ensure_executable(p);
+    }
+    found
 }
 
 /// Where new copies go: the install folder's "tools" when we may write
@@ -166,6 +190,8 @@ async fn download(client: &reqwest::Client, url: &str, dest: &Path, sha256: &str
         let _ = std::fs::remove_file(&tmp);
         anyhow::bail!("the download of {url} does not match its published SHA-256");
     }
+    // a program must be executable (Linux): File::create makes a plain 0644 file
+    ensure_executable(&tmp);
     replace(&tmp, dest)
 }
 
@@ -288,6 +314,7 @@ async fn ffmpeg(client: &reqwest::Client, data_dir: &Path) -> anyhow::Result<()>
         Some(f) => {
             let staged = dir.join("ffmpeg.new");
             std::fs::copy(&f, &staged)?;
+            ensure_executable(&staged);
             replace(&staged, &dir.join(exe("ffmpeg")))?;
             std::fs::write(&version_file, &latest)?;
             let _ = std::fs::write(&stamp, b"ok");

@@ -5,10 +5,11 @@
 // Nine themes; the DIOS violet (#8800ff) is the brand accent.
 
 import { Button, LineEdit, SpinBox, CheckBox, ComboBox, ListView, TabWidget, TextEdit, Palette } from "std-widgets.slint";
-import { DownloadRow, QueueRow, SegView, Cols, ColDef, CatRow, PairRow, LinkRow, Theme, ThemedWindow, P, Icon, G, TypeIcon, BigTypeIcon, ToolBtn, ToolSeparator, TreeItem, HeaderCell, Cell, MenuEntry, MenuSep, MenuLabel, Glyph, AccentButton } from "common.slint";
-export { DownloadRow, QueueRow, SegView, Cols, ColDef, CatRow, PairRow, LinkRow, Theme }
+import { DownloadRow, QueueRow, SegView, TorrentFileRow, Cols, ColDef, CatRow, PairRow, LinkRow, Theme, ThemedWindow, P, Icon, G, TypeIcon, BigTypeIcon, ToolBtn, ToolSeparator, TreeItem, HeaderCell, Cell, MenuEntry, MenuSep, MenuLabel, Glyph, AccentButton } from "common.slint";
+export { DownloadRow, QueueRow, SegView, TorrentFileRow, Cols, ColDef, CatRow, PairRow, LinkRow, Theme }
 export { BrowserRow } from "dialogs.slint";
 export { ColumnsDialog, CategoryDialog, FindDialog, PropertiesDialog, DuplicateDialog, CountdownDialog, SchedulerDialog, GrabberDialog, TipDialog, RefreshDialog, SettingsDialog, PlaylistDialog, BrowserDialog, AboutDialog, UpdateDialog } from "dialogs.slint";
+export { TorrentAddDialog, TorrentDetailsDialog } from "torrent.slint";
 
 component DownloadItem inherits Rectangle {
     in property <DownloadRow> data;
@@ -131,6 +132,14 @@ component DownloadItem inherits Rectangle {
                         root.action("folder");
                     }
                 }
+                MenuEntry {
+                    text: @tr("Torrent contents…");
+                    glyph: "magnet";
+                    enabled: root.data.is-torrent;
+                    clicked => {
+                        root.action("torrent");
+                    }
+                }
                 MenuSep { }
                 MenuEntry {
                     text: @tr("Resume download");
@@ -160,7 +169,7 @@ component DownloadItem inherits Rectangle {
                 MenuEntry {
                     text: @tr("Refresh download address…");
                     glyph: "refresh";
-                    enabled: !root.done;
+                    enabled: !root.done && !root.data.is-torrent;
                     clicked => {
                         root.action("refresh");
                     }
@@ -497,6 +506,9 @@ export component MainWindow inherits ThemedWindow {
     preferred-height: 500px;
     min-width: 700px;
     min-height: 380px;
+    // fixed limits: the layout below must not decide the window's size (the
+    // toolbar and the tree change with the window's width)
+    max-width: 16000px;
 
     in property <[DownloadRow]> rows;
     in property <[QueueRow]> queues;
@@ -511,6 +523,11 @@ export component MainWindow inherits ThemedWindow {
     in-out property <string> search;
     in property <string> status-text;
     in property <string> limiter-text;
+    // a short word in the status bar that goes away again (what Ctrl+V did,
+    // what a drop did); empty = show the regular status
+    in property <string> flash;
+    // files or links are dragged over the window (dropped or taken away)
+    in property <bool> drag-hover;
     in property <int> selected-state: -1;
     // multiple selection: how many, and whether any can be resumed / stopped
     in property <int> sel-count;
@@ -534,6 +551,11 @@ export component MainWindow inherits ThemedWindow {
     callback add-url();
     callback add-batch();
     callback add-batch-clipboard();
+    // BitTorrent: a .torrent file / a magnet link
+    callback add-torrent();
+    callback add-magnet();
+    // Ctrl+V: download whatever the clipboard holds (link, magnet, .torrent)
+    callback paste-clipboard();
     callback resume(int);
     callback pause(int);
     callback resume-all();
@@ -608,36 +630,95 @@ export component MainWindow inherits ThemedWindow {
     callback tips();
     callback about();
     callback quit();
+    // Tasks > Hide to tray (Ctrl+H) and the toolbar button
+    callback hide-to-tray();
+    // keyboard: move the selection (+1 / -1 / +10 / -10, +1000 = last, -1000 = first)
+    callback select-step(int);
+    // Space: pause or resume the selected download
+    callback toggle-selected();
+    // the icon next to the clock exists
+    in property <bool> tray-available;
+    // small windows: icon-only toolbar, no category tree
+    // set from the window's width by hand (a binding to the width is a loop: the
+    // window's size comes from this layout)
+    in-out property <length> win-w: 960px;
+    property <bool> compact: root.win-w < 1150px;
+    property <bool> narrow: root.win-w < 820px;
+    changed width => {
+        root.win-w = self.width;
+    }
+    property <bool> use-small: root.toolbar-small || root.compact;
+    function focus-filter() {
+        filter-edit.focus();
+    }
+    // keyboard navigation: scroll the list so that row `i` is on screen
+    public function scroll-to-row(i: int) {
+        // an empty list's row height is only a guess, the rows are all alike
+        if (i < 0) {
+            return;
+        }
+        if (i * max(26px, 26px * Theme.font-scale) < -lv.content-y) {
+            lv.content-y = -(i * max(26px, 26px * Theme.font-scale));
+        } else if ((i + 1) * max(26px, 26px * Theme.font-scale) > -lv.content-y + lv.visible-height) {
+            lv.content-y = -((i + 1) * max(26px, 26px * Theme.font-scale) - lv.visible-height);
+        }
+    }
 
     MenuBar {
         Menu {
             title: @tr("Tasks");
             MenuItem {
                 title: @tr("Add new download…");
+                shortcut: @keys(Control + N);
                 activated => {
                     root.add-url();
                 }
             }
             MenuItem {
                 title: @tr("Add batch download…");
+                shortcut: @keys(Control + B);
                 activated => {
                     root.add-batch();
                 }
             }
             MenuItem {
+                title: @tr("Add torrent file…");
+                shortcut: @keys(Control + T);
+                activated => {
+                    root.add-torrent();
+                }
+            }
+            MenuItem {
+                title: @tr("Add magnet link…");
+                shortcut: @keys(Control + M);
+                activated => {
+                    root.add-magnet();
+                }
+            }
+            MenuItem {
+                title: @tr("Paste download link");
+                shortcut: @keys(Control + V);
+                activated => {
+                    root.paste-clipboard();
+                }
+            }
+            MenuItem {
                 title: @tr("Add batch download from clipboard");
+                shortcut: @keys(Control + Shift + V);
                 activated => {
                     root.add-batch-clipboard();
                 }
             }
             MenuItem {
                 title: @tr("Run site grabber…");
+                shortcut: @keys(Control + G);
                 activated => {
                     root.grabber();
                 }
             }
             MenuItem {
                 title: @tr("Download a playlist…");
+                shortcut: @keys(Control + Shift + L);
                 activated => {
                     root.playlist();
                 }
@@ -676,12 +757,21 @@ export component MainWindow inherits ThemedWindow {
             MenuSeparator { }
             MenuItem {
                 title: @tr("Open download folder");
+                shortcut: @keys(Control + J);
                 activated => {
                     root.open-download-folder();
                 }
             }
             MenuItem {
+                title: @tr("Hide to tray");
+                shortcut: @keys(Control + H);
+                activated => {
+                    root.hide-to-tray();
+                }
+            }
+            MenuItem {
                 title: @tr("Exit");
+                shortcut: @keys(Control + Q);
                 activated => {
                     root.quit();
                 }
@@ -691,6 +781,7 @@ export component MainWindow inherits ThemedWindow {
             title: @tr("File");
             MenuItem {
                 title: @tr("Download now");
+                shortcut: @keys(Control + R);
                 enabled: root.can-resume;
                 activated => {
                     root.resume(root.selected-id);
@@ -698,6 +789,7 @@ export component MainWindow inherits ThemedWindow {
             }
             MenuItem {
                 title: @tr("Stop download");
+                shortcut: @keys(Control + P);
                 enabled: root.can-stop;
                 activated => {
                     root.pause(root.selected-id);
@@ -712,6 +804,7 @@ export component MainWindow inherits ThemedWindow {
             }
             MenuItem {
                 title: @tr("Redownload");
+                shortcut: @keys(Control + Shift + R);
                 enabled: root.selected-id >= 0;
                 activated => {
                     root.row-action(root.selected-id, "restart");
@@ -727,6 +820,7 @@ export component MainWindow inherits ThemedWindow {
             MenuSeparator { }
             MenuItem {
                 title: @tr("Open");
+                shortcut: @keys(Control + O);
                 enabled: root.selected-state == 3;
                 activated => {
                     root.row-action(root.selected-id, "open");
@@ -741,6 +835,7 @@ export component MainWindow inherits ThemedWindow {
             }
             MenuItem {
                 title: @tr("Open folder");
+                shortcut: @keys(Control + Shift + O);
                 enabled: root.selected-id >= 0;
                 activated => {
                     root.row-action(root.selected-id, "folder");
@@ -748,6 +843,7 @@ export component MainWindow inherits ThemedWindow {
             }
             MenuItem {
                 title: @tr("Move / Rename…");
+                shortcut: @keys(F2);
                 enabled: root.selected-id >= 0;
                 activated => {
                     root.row-action(root.selected-id, "move");
@@ -755,6 +851,7 @@ export component MainWindow inherits ThemedWindow {
             }
             MenuItem {
                 title: @tr("Copy address");
+                shortcut: @keys(Control + Shift + C);
                 enabled: root.selected-id >= 0;
                 activated => {
                     root.row-action(root.selected-id, "copy");
@@ -769,6 +866,7 @@ export component MainWindow inherits ThemedWindow {
             }
             MenuItem {
                 title: @tr("Properties");
+                shortcut: @keys(Alt + Return);
                 enabled: root.selected-id >= 0;
                 activated => {
                     root.row-action(root.selected-id, "properties");
@@ -779,18 +877,21 @@ export component MainWindow inherits ThemedWindow {
             title: @tr("Downloads");
             MenuItem {
                 title: @tr("Resume all");
+                shortcut: @keys(Control + Shift + S);
                 activated => {
                     root.resume-all();
                 }
             }
             MenuItem {
                 title: @tr("Stop all");
+                shortcut: @keys(Control + Shift + P);
                 activated => {
                     root.stop-all();
                 }
             }
             MenuItem {
                 title: @tr("Delete all completed");
+                shortcut: @keys(Control + Shift + Delete);
                 activated => {
                     root.delete-completed();
                 }
@@ -903,12 +1004,14 @@ export component MainWindow inherits ThemedWindow {
             MenuSeparator { }
             MenuItem {
                 title: @tr("Scheduler…");
+                shortcut: @keys(Control + Shift + T);
                 activated => {
                     root.open-scheduler();
                 }
             }
             MenuItem {
                 title: @tr("Options…");
+                shortcut: @keys(Control + ",");
                 activated => {
                     root.open-settings(0);
                 }
@@ -917,7 +1020,15 @@ export component MainWindow inherits ThemedWindow {
         Menu {
             title: @tr("View");
             MenuItem {
+                title: @tr("Filter the list…");
+                shortcut: @keys(Control + K);
+                activated => {
+                    root.focus-filter();
+                }
+            }
+            MenuItem {
                 title: @tr("Show categories");
+                shortcut: @keys(F9);
                 checkable: true;
                 checked: !root.hide-categories;
                 activated => {
@@ -968,6 +1079,7 @@ export component MainWindow inherits ThemedWindow {
             }
             MenuItem {
                 title: @tr("Columns…");
+                shortcut: @keys(Control + Shift + K);
                 activated => {
                     root.open-columns();
                 }
@@ -1126,12 +1238,14 @@ export component MainWindow inherits ThemedWindow {
             title: @tr("Help");
             MenuItem {
                 title: @tr("Add DIOS Downloader to my browser…");
+                shortcut: @keys(Control + Shift + B);
                 activated => {
                     root.browsers();
                 }
             }
             MenuItem {
                 title: @tr("Tip of the day…");
+                shortcut: @keys(Control + Shift + H);
                 activated => {
                     root.tips();
                 }
@@ -1151,6 +1265,7 @@ export component MainWindow inherits ThemedWindow {
             MenuSeparator { }
             MenuItem {
                 title: @tr("About DIOS Downloader");
+                shortcut: @keys(F1);
                 activated => {
                     root.about();
                 }
@@ -1241,6 +1356,34 @@ export component MainWindow inherits ThemedWindow {
                 root.row-activated(root.selected-id);
                 return accept;
             }
+            if (event.text == Key.UpArrow) {
+                root.select-step(-1);
+                return accept;
+            }
+            if (event.text == Key.DownArrow) {
+                root.select-step(1);
+                return accept;
+            }
+            if (event.text == Key.PageUp) {
+                root.select-step(-10);
+                return accept;
+            }
+            if (event.text == Key.PageDown) {
+                root.select-step(10);
+                return accept;
+            }
+            if (event.text == Key.Home) {
+                root.select-step(-1000);
+                return accept;
+            }
+            if (event.text == Key.End) {
+                root.select-step(1000);
+                return accept;
+            }
+            if (event.text == " " && root.selected-id >= 0) {
+                root.toggle-selected();
+                return accept;
+            }
             if (event.text == Key.F3) {
                 root.find-next();
                 return accept;
@@ -1257,14 +1400,30 @@ export component MainWindow inherits ThemedWindow {
                 root.add-batch();
                 return accept;
             }
+            if (event.modifiers.control && (event.text == "t" || event.text == "T")) {
+                root.add-torrent();
+                return accept;
+            }
+            if (event.modifiers.control && (event.text == "m" || event.text == "M")) {
+                root.add-magnet();
+                return accept;
+            }
+            // Ctrl+V: download what the clipboard holds. When a text field has
+            // the focus it pastes into the field (the field takes the key first).
+            if (event.modifiers.control && (event.text == "v" || event.text == "V")) {
+                root.paste-clipboard();
+                return accept;
+            }
             reject
         }
 
         VerticalLayout {
             // ---- toolbar (buttons that don't fit a narrow window are cut off)
             Rectangle {
-                height: root.toolbar-small ? 42px : 60px;
+                height: root.use-small ? 42px : 60px;
                 min-width: 0px;
+                preferred-width: 0px;
+                max-width: 16000px;
                 clip: true;
                 background: @linear-gradient(180deg, Theme.toolbar-top 0%, Theme.toolbar-bottom 100%);
                 HorizontalLayout {
@@ -1275,7 +1434,7 @@ export component MainWindow inherits ThemedWindow {
                     ToolBtn {
                         icon: "add";
                         text: @tr("Add URL");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         primary: true;
                         clicked => {
                             root.add-url();
@@ -1284,16 +1443,32 @@ export component MainWindow inherits ThemedWindow {
                     ToolBtn {
                         icon: "batch";
                         text: @tr("Add Batch");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         clicked => {
                             root.add-batch();
+                        }
+                    }
+                    if root.win-w > 620px: ToolBtn {
+                        icon: "torrent";
+                        text: @tr("Add Torrent");
+                        small: root.use-small;
+                        clicked => {
+                            root.add-torrent();
+                        }
+                    }
+                    if root.win-w > 700px: ToolBtn {
+                        icon: "paste";
+                        text: @tr("Paste");
+                        small: root.use-small;
+                        clicked => {
+                            root.paste-clipboard();
                         }
                     }
                     ToolSeparator { }
                     ToolBtn {
                         icon: "resume";
                         text: @tr("Resume");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         enabled: root.can-resume;
                         clicked => {
                             root.resume(root.selected-id);
@@ -1302,7 +1477,7 @@ export component MainWindow inherits ThemedWindow {
                     ToolBtn {
                         icon: "stop";
                         text: @tr("Stop");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         enabled: root.can-stop;
                         clicked => {
                             root.pause(root.selected-id);
@@ -1311,7 +1486,7 @@ export component MainWindow inherits ThemedWindow {
                     ToolBtn {
                         icon: "stopall";
                         text: @tr("Stop All");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         clicked => {
                             root.stop-all();
                         }
@@ -1320,16 +1495,16 @@ export component MainWindow inherits ThemedWindow {
                     ToolBtn {
                         icon: "delete";
                         text: @tr("Delete");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         enabled: root.selected-id >= 0;
                         clicked => {
                             root.delete(root.selected-id);
                         }
                     }
-                    ToolBtn {
+                    if root.win-w > 760px: ToolBtn {
                         icon: "deletedone";
                         text: @tr("Delete Done");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         clicked => {
                             root.delete-completed();
                         }
@@ -1338,42 +1513,42 @@ export component MainWindow inherits ThemedWindow {
                     ToolBtn {
                         icon: "options";
                         text: @tr("Options");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         clicked => {
                             root.open-settings(0);
                         }
                     }
-                    ToolBtn {
+                    if root.win-w > 800px: ToolBtn {
                         icon: "scheduler";
                         text: @tr("Scheduler");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         clicked => {
                             root.open-scheduler();
                         }
                     }
-                    ToolBtn {
+                    if root.win-w > 840px: ToolBtn {
                         icon: "limiter";
                         text: root.limiter-on ? @tr("Limiter: On") : @tr("Limiter: Off");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         clicked => {
                             root.toggle-limiter();
                         }
                     }
                     ToolSeparator { }
-                    start-q := ToolBtn {
+                    if root.win-w > 700px: start-q := ToolBtn {
                         icon: "startqueue";
                         text: @tr("Start Queue");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         clicked => {
                             root.qmenu-start = true;
                             root.qmenu-x = self.x;
                             queue-menu.show();
                         }
                     }
-                    stop-q := ToolBtn {
+                    if root.win-w > 700px: stop-q := ToolBtn {
                         icon: "stopqueue";
                         text: @tr("Stop Queue");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         clicked => {
                             root.qmenu-start = false;
                             root.qmenu-x = self.x;
@@ -1381,18 +1556,18 @@ export component MainWindow inherits ThemedWindow {
                         }
                     }
                     ToolSeparator { }
-                    ToolBtn {
+                    if root.win-w > 900px: ToolBtn {
                         icon: "grabber";
                         text: @tr("Grabber");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         clicked => {
                             root.grabber();
                         }
                     }
-                    ToolBtn {
+                    if root.win-w > 940px: ToolBtn {
                         icon: "playlist";
                         text: @tr("Playlist");
-                        small: root.toolbar-small;
+                        small: root.use-small;
                         clicked => {
                             root.playlist();
                         }
@@ -1402,13 +1577,21 @@ export component MainWindow inherits ThemedWindow {
                     }
                     VerticalLayout {
                         alignment: center;
-                        LineEdit {
-                            width: 150px;
+                        filter-edit := LineEdit {
+                            width: root.narrow ? 110px : 170px;
                             placeholder-text: @tr("Filter the list…");
                             text <=> root.search;
                             edited(t) => {
                                 root.search-changed();
                             }
+                        }
+                    }
+                    if root.tray-available: ToolBtn {
+                        icon: "hide";
+                        text: @tr("Hide");
+                        small: root.use-small;
+                        clicked => {
+                            root.hide-to-tray();
                         }
                     }
                 }
@@ -1426,7 +1609,7 @@ export component MainWindow inherits ThemedWindow {
                 padding: 4px;
                 spacing: 4px;
                 // ---- tree
-                if !root.hide-categories: Rectangle {
+                if !root.hide-categories && !root.narrow: Rectangle {
                     width: 210px;
                     background: Theme.panel;
                     border-width: 1px;
@@ -1617,8 +1800,8 @@ export component MainWindow inherits ThemedWindow {
                             clip: true;
                             // scrolls sideways together with the list (wide columns)
                             HorizontalLayout {
-                                x: lv.viewport-x;
-                                width: max(parent.width, lv.viewport-width);
+                                x: lv.content-x;
+                                width: max(parent.width, lv.content-width);
                                 padding-left: 6px;
                                 HeaderCell {
                                     text: "";
@@ -1717,17 +1900,60 @@ export component MainWindow inherits ThemedWindow {
                     padding-left: 8px;
                     padding-right: 8px;
                     Text {
-                        text: root.status-text;
+                        text: root.flash != "" ? root.flash : root.status-text;
                         vertical-alignment: center;
                         horizontal-stretch: 1;
+                        overflow: elide;
                         font-size: 11px * Theme.font-scale;
-                        color: Theme.muted;
+                        color: root.flash != "" ? Theme.accent : Theme.muted;
                     }
                     Text {
                         text: root.limiter-text;
                         vertical-alignment: center;
                         font-size: 11px * Theme.font-scale;
                         color: root.limiter-on ? Theme.warn : Theme.muted;
+                    }
+                }
+            }
+        }
+
+        // ---- "drop it here" veil: a drag from outside hovers over the window
+        if root.drag-hover: Rectangle {
+            x: 6px;
+            y: 6px;
+            width: parent.width - 12px;
+            height: parent.height - 12px;
+            border-radius: 10px;
+            background: #1f6feb22;
+            border-width: 2px;
+            border-color: #1f6feb;
+            drop-shadow-blur: 12px;
+            drop-shadow-color: #1f6feb33;
+            Rectangle {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: name-text.preferred-width + 34px;
+                height: 46px;
+                border-radius: 23px;
+                background: #ffffffee;
+                drop-shadow-blur: 10px;
+                drop-shadow-color: #00000044;
+                drop-shadow-offset-y: 2px;
+                HorizontalLayout {
+                    alignment: center;
+                    spacing: 10px;
+                    padding-left: 12px;
+                    Icon {
+                        kind: "paste";
+                        width: 26px;
+                        height: 26px;
+                    }
+                    name-text := Text {
+                        text: @tr("Drop to add to DIOS Downloader");
+                        vertical-alignment: center;
+                        font-size: 14px * Theme.font-scale;
+                        font-weight: 700;
+                        color: #23364a;
                     }
                 }
             }
@@ -1741,7 +1967,9 @@ export component MainWindow inherits ThemedWindow {
 export component AddDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("Download File Info");
     preferred-width: 640px;
     min-width: 540px;
@@ -2050,7 +2278,9 @@ component TabButton inherits Rectangle {
 export component BatchDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("Add batch download");
     preferred-width: 640px;
     preferred-height: 520px;
@@ -2353,6 +2583,8 @@ export component DetailsDialog inherits ThemedWindow {
     callback resume();
     callback cancel-download();
     callback close-window();
+    // like IDM's "Hide": the window goes to the tray, the download goes on
+    callback hide-to-tray();
     callback limit-changed();
     callback completion-changed();
 
@@ -2658,6 +2890,12 @@ export component DetailsDialog inherits ThemedWindow {
                 text: @tr("Resume");
                                 clicked => {
                     root.resume();
+                }
+            }
+            if root.state != 3: Button {
+                text: @tr("Hide");
+                clicked => {
+                    root.hide-to-tray();
                 }
             }
             Button {

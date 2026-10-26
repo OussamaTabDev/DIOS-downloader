@@ -8,13 +8,16 @@ mod api;
 mod autostart;
 mod browser;
 mod clipboard;
+mod dropfiles;
 mod extra;
 mod grab;
 mod i18n;
 mod options;
+mod paste;
 mod playlist;
 mod scheduler;
 mod sound;
+mod torrent;
 mod tray;
 mod update;
 mod winfx;
@@ -130,6 +133,11 @@ pub(crate) struct Ui {
     power: Rc<RefCell<Option<(AfterDone, i32)>>>,
     sched: Weak<SchedulerDialog>,
     sched_state: Rc<RefCell<scheduler::SchedState>>,
+    /// "Add torrent" window and its per-download torrent windows
+    torrent_add: Weak<TorrentAddDialog>,
+    torrent_rows: Rc<VecModel<TorrentFileRow>>,
+    torrent_wins: Rc<RefCell<HashMap<u64, torrent::TorrentWin>>>,
+    torrent_shared: Arc<torrent::TorrentShared>,
     grabber: Weak<GrabberDialog>,
     grab_state: Rc<RefCell<grab::GrabUi>>,
     tips: Weak<TipDialog>,
@@ -148,6 +156,13 @@ pub(crate) struct Ui {
 }
 
 fn main() -> anyhow::Result<()> {
+    // Every window of the program gets its own GPU context with the default
+    // renderer; on many drivers each first show took seconds. The software
+    // renderer opens a window at once and is plenty for this UI.
+    // DIOS_GPU=1 (or SLINT_BACKEND) brings the GPU renderer back.
+    if std::env::var_os("SLINT_BACKEND").is_none() && std::env::var_os("DIOS_GPU").is_none() {
+        std::env::set_var("SLINT_BACKEND", "winit-software");
+    }
     // started by Windows at sign-in: stay next to the clock, no window
     let background = std::env::args().any(|a| a == "--background");
     let data_dir = default_data_dir();
@@ -184,6 +199,7 @@ fn main() -> anyhow::Result<()> {
     let dup = DuplicateDialog::new()?;
     let countdown = CountdownDialog::new()?;
     let sched = SchedulerDialog::new()?;
+    let torrent_add = TorrentAddDialog::new()?;
     let grabber = GrabberDialog::new()?;
     let tips = TipDialog::new()?;
     let refresh_dlg = RefreshDialog::new()?;
@@ -203,6 +219,29 @@ fn main() -> anyhow::Result<()> {
         });
         ABOUT.with(|a| *a.borrow_mut() = Some(about_dlg.as_weak()));
     }
+
+    pin!(
+        add, batch, settings_dlg, columns, category, find, props, dup, sched, torrent_add, grabber, tips, refresh_dlg,
+        playlist_dlg, browsers_dlg, updater_dlg, about_dlg
+    );
+    close_on_escape(&add);
+    close_on_escape(&batch);
+    close_on_escape(&settings_dlg);
+    close_on_escape(&complete);
+    close_on_escape(&columns);
+    close_on_escape(&category);
+    close_on_escape(&find);
+    close_on_escape(&props);
+    close_on_escape(&dup);
+    close_on_escape(&sched);
+    close_on_escape(&torrent_add);
+    close_on_escape(&grabber);
+    close_on_escape(&tips);
+    close_on_escape(&refresh_dlg);
+    close_on_escape(&playlist_dlg);
+    close_on_escape(&browsers_dlg);
+    close_on_escape(&updater_dlg);
+    close_on_escape(&about_dlg);
 
     let ctx = Ctx {
         mgr: mgr.clone(),
@@ -234,6 +273,10 @@ fn main() -> anyhow::Result<()> {
         power: Rc::new(RefCell::new(None)),
         sched: sched.as_weak(),
         sched_state: Rc::new(RefCell::new(scheduler::SchedState::default())),
+        torrent_add: torrent_add.as_weak(),
+        torrent_rows: Rc::new(VecModel::default()),
+        torrent_wins: Rc::new(RefCell::new(HashMap::new())),
+        torrent_shared: Arc::new(torrent::TorrentShared::default()),
         grabber: grabber.as_weak(),
         grab_state: Rc::new(RefCell::new(grab::GrabUi::default())),
         tips: tips.as_weak(),
@@ -268,6 +311,8 @@ fn main() -> anyhow::Result<()> {
     }
     let tray = tray::Tray::new();
     let has_tray = tray.is_some();
+    HAS_TRAY.with(|h| h.set(has_tray));
+    main.set_tray_available(has_tray);
     {
         let s = mgr.settings();
         apply_theme(&ui, s.theme as i32);
@@ -282,6 +327,7 @@ fn main() -> anyhow::Result<()> {
     wire_complete(&ui);
     options::wire(&ui);
     scheduler::wire(&ui);
+    torrent::wire(&ui);
     grab::wire(&ui);
     extra::wire(&ui);
     playlist::wire(&ui);
@@ -311,25 +357,17 @@ fn main() -> anyhow::Result<()> {
         std::mem::forget(api_timer);
         let _ = ctx;
     }
+    let pickups: Pickups = Arc::default();
     {
         let enabled_mgr = mgr.clone();
-        let ctx = ctx.clone();
+        let pickups2 = pickups.clone();
         clipboard::spawn(
             move || enabled_mgr.settings().clipboard_monitor,
-            move |url| {
-                let ctx = ctx.clone();
-                let _ = slint::invoke_from_event_loop(move || {
-                    if ctx.mgr.settings().auto_start_clipboard {
-                        if ctx.mgr.find_url(&url).is_none() {
-                            ctx.mgr.add(NewDownload { url, start: true, ..Default::default() });
-                        }
-                        return;
-                    }
-                    let busy = ctx.add.upgrade().map(|d| d.window().is_visible()).unwrap_or(true);
-                    if !busy {
-                        open_add_dialog(&ctx, url, RequestHeaders::default(), None, VideoExtra::default());
-                    }
-                });
+            move |pickup| {
+                // only the collecting is done here; the UI work happens in the
+                // fast timer (this thread holds no windows)
+                pickups2.lock().unwrap().push_back(pickup);
+                let _ = slint::invoke_from_event_loop(|| {});
             },
         );
     }
@@ -339,12 +377,18 @@ fn main() -> anyhow::Result<()> {
     let fast_timer = Timer::default();
     {
         let ui = ui.clone();
+        let pickups = pickups.clone();
         fast_timer.start(TimerMode::Repeated, Duration::from_millis(100), move || {
             if modal_open() {
                 return;
             }
             update_progress_windows(&ui);
+            torrent::poll_windows(&ui);
+            torrent::poll_add(&ui);
             grab::poll(&ui);
+            for pickup in take_pickups(&pickups) {
+                clipboard_pickup(&ui, pickup);
+            }
             if let Some(t) = &tray {
                 t.set_limiter(ui.ctx.mgr.settings().speed_limit_on);
                 for action in t.poll() {
@@ -398,6 +442,27 @@ fn main() -> anyhow::Result<()> {
     }
     refresh(&ui);
 
+    // opened with a .torrent file or a magnet link ("Open with", the
+    // browser, the command line): the "Add torrent" window comes up
+    // (not when the app starts quietly next to the clock)
+    if !(background && has_tray) {
+        let ui = ui.clone();
+        let mut opened = false;
+        for arg in std::env::args().skip(1) {
+            let a = arg.trim();
+            if opened {
+                break;
+            }
+            if a.starts_with("magnet:") {
+                torrent::open_add(&ui, Some(dios_engine::TorrentSource::Magnet(a.to_string())));
+                opened = true;
+            } else if a.to_ascii_lowercase().ends_with(".torrent") && Path::new(a).is_file() {
+                torrent::open_add(&ui, Some(dios_engine::TorrentSource::Torrent(PathBuf::from(a))));
+                opened = true;
+            }
+        }
+    }
+
     {
         let mgr = mgr.clone();
         main.window().on_close_requested(move || {
@@ -427,6 +492,8 @@ fn main() -> anyhow::Result<()> {
         // the main window: in the middle of the screen, and it can be maximized
         winfx::place(main.as_weak(), true);
         winfx::set_opacity(main.window(), mgr.settings().opacity);
+        // files and links can be dragged onto the window from outside
+        install_drops(&ui);
         let mut s = mgr.settings();
         if !s.extension_prompted {
             // first start: help adding the browser extension
@@ -478,6 +545,30 @@ fn wire_main(ui: &Ui) {
             let text = arboard::Clipboard::new().ok().and_then(|mut c| c.get_text().ok()).unwrap_or_default();
             open_batch(&ui, text);
         });
+    }
+    {
+        // the file picker opens right away: a torrent usually comes as a file
+        let ui = ui.clone();
+        main.on_add_torrent(move || {
+            torrent::open_add(&ui, None);
+            if let Some(d) = ui.torrent_add.upgrade() {
+                d.invoke_choose_file();
+            }
+        });
+    }
+    {
+        let ui = ui.clone();
+        main.on_add_magnet(move || {
+            torrent::open_add(&ui, None);
+            if let Some(d) = ui.torrent_add.upgrade() {
+                d.set_mode(1);
+            }
+        });
+    }
+    {
+        // Ctrl+V / the toolbar's Paste button: download what the clipboard holds
+        let ui = ui.clone();
+        main.on_paste_clipboard(move || paste::paste_from_clipboard(&ui));
     }
     {
         let ui = ui.clone();
@@ -874,6 +965,52 @@ fn wire_main(ui: &Ui) {
             }
         });
     }
+    {
+        let ui = ui.clone();
+        main.on_hide_to_tray(move || {
+            if let Some(m) = ui.ctx.main.upgrade() {
+                if HAS_TRAY.with(|h| h.get()) {
+                    let _ = m.hide();
+                } else {
+                    m.window().set_minimized(true);
+                }
+            }
+        });
+    }
+    {
+        let ui = ui.clone();
+        main.on_select_step(move |step| {
+            let order = visible_ids(&ui);
+            let (Some(m), false) = (ui.ctx.main.upgrade(), order.is_empty()) else { return };
+            let last = order.len() as i32 - 1;
+            let current = order.iter().position(|id| *id as i32 == m.get_selected_id()).map(|i| i as i32);
+            let next = match (current, step) {
+                (_, s) if s <= -1000 => 0,
+                (_, s) if s >= 1000 => last,
+                (None, s) if s < 0 => last,
+                (None, _) => 0,
+                (Some(c), s) => (c + s).clamp(0, last),
+            };
+            select_single(&ui, order[next as usize]);
+            refresh(&ui);
+            m.invoke_scroll_to_row(next);
+        });
+    }
+    {
+        main.on_toggle_selected({
+            let w = main.as_weak();
+            move || {
+                if let Some(m) = w.upgrade() {
+                    let id = m.get_selected_id();
+                    if m.get_can_stop() {
+                        m.invoke_pause(id);
+                    } else if m.get_can_resume() {
+                        m.invoke_resume(id);
+                    }
+                }
+            }
+        });
+    }
     main.on_about(about);
     main.on_quit(|| {
         let _ = slint::quit_event_loop();
@@ -986,6 +1123,7 @@ fn multi_action(ui: &Ui, ids: &[u64], action: &str) {
             if let Ok(mut c) = arboard::Clipboard::new() {
                 let _ = c.set_text(text.join("\r\n"));
             }
+            clipboard::mark_self_copy();
         }
         _ => {}
     }
@@ -1007,7 +1145,10 @@ thread_local! {
 fn tray_action(ui: &Ui, action: tray::TrayAction) {
     use tray::TrayAction as T;
     match action {
-        T::Show => bring_to_front(&ui.ctx),
+        T::Show => {
+            bring_to_front(&ui.ctx);
+            restore_hidden_progress(ui);
+        }
         T::AddUrl => {
             bring_to_front(&ui.ctx);
             open_add_dialog(&ui.ctx, String::new(), RequestHeaders::default(), None, VideoExtra::default());
@@ -1067,10 +1208,46 @@ thread_local! {
     static LAST_API_ADD: RefCell<Option<(String, std::time::Instant)>> = const { RefCell::new(None) };
 }
 
+/// What the clipboard monitor found and the UI has not handled yet. The
+/// monitor thread is not allowed to touch the UI, so links wait in this
+/// queue (Send) until the fast timer hands them over, like the browser
+/// extension's requests do.
+type Pickups = Arc<Mutex<std::collections::VecDeque<String>>>;
+
+/// Take what the clipboard monitor found since last time (UI thread).
+fn take_pickups(pickups: &Pickups) -> Vec<String> {
+    pickups.lock().unwrap().drain(..).collect()
+}
+
+/// What a link (or magnet) copied somewhere else does: a magnet opens the
+/// torrent window, a link follows Options > Monitoring.
+fn clipboard_pickup(ui: &Ui, pickup: String) {
+    // a magnet link goes to the torrent window, like from the browser
+    if pickup.starts_with("magnet:") {
+        torrent::open_add(ui, Some(dios_engine::TorrentSource::Magnet(pickup)));
+        return;
+    }
+    let ctx = &ui.ctx;
+    if ctx.mgr.settings().auto_start_clipboard {
+        if ctx.mgr.find_url(&pickup).is_none() {
+            ctx.mgr.add(NewDownload { url: pickup, start: true, ..Default::default() });
+            refresh(ui);
+        }
+        return;
+    }
+    let busy = ctx.add.upgrade().map(|d| d.window().is_visible()).unwrap_or(true);
+    if !busy {
+        open_add_dialog(ctx, pickup, RequestHeaders::default(), None, VideoExtra::default());
+    }
+}
+
 /// A request from the browser extension.
 fn handle_api(ui: &Ui, event: api::ApiEvent) {
     match event {
-        api::ApiEvent::Show => bring_to_front(&ui.ctx),
+        api::ApiEvent::Show => {
+            bring_to_front(&ui.ctx);
+            restore_hidden_progress(ui);
+        }
         api::ApiEvent::Links(l) => grab::open_links(ui, l),
         api::ApiEvent::Add(req) => {
             // the same address again within a few seconds (an older browser
@@ -1083,6 +1260,11 @@ fn handle_api(ui: &Ui, event: api::ApiEvent) {
                 same
             });
             if repeat {
+                return;
+            }
+            // magnet links go to the torrent window, not to "Download File Info"
+            if req.url.starts_with("magnet:") {
+                torrent::open_add(ui, Some(dios_engine::TorrentSource::Magnet(req.url)));
                 return;
             }
             let mut headers = RequestHeaders {
@@ -1455,7 +1637,12 @@ pub(crate) struct ModalGuard(bool);
 
 impl ModalGuard {
     pub(crate) fn new() -> ModalGuard {
-        ModalGuard(MODAL.with(|m| m.replace(true)))
+        let before = MODAL.with(|m| m.replace(true));
+        if !before {
+            // the message box must not hide behind the always-on-top dialogs
+            set_dialogs_on_top(false);
+        }
+        ModalGuard(before)
     }
 }
 
@@ -1463,12 +1650,125 @@ impl Drop for ModalGuard {
     fn drop(&mut self) {
         let before = self.0;
         MODAL.with(|m| m.set(before));
+        if !before {
+            set_dialogs_on_top(true);
+        }
+    }
+}
+
+thread_local! {
+    /// Sets "always on top" of every dialog that has it (all but the download windows).
+    static PINNED: RefCell<Vec<Box<dyn Fn(bool)>>> = const { RefCell::new(Vec::new()) };
+    /// Download windows sent to the tray with their Hide button.
+    pub(crate) static HIDDEN_PROGRESS: RefCell<std::collections::HashSet<u64>> = RefCell::new(std::collections::HashSet::new());
+    /// The icon next to the clock exists.
+    static HAS_TRAY: Cell<bool> = const { Cell::new(false) };
+}
+
+fn set_dialogs_on_top(on: bool) {
+    PINNED.with(|p| {
+        for f in p.borrow().iter() {
+            f(on);
+        }
+    });
+}
+
+/// The dialog stays in front of the main window (and of the browser).
+macro_rules! pin {
+    ($($d:expr),* $(,)?) => {{
+        $({
+            let w = $d.as_weak();
+            PINNED.with(|p| {
+                p.borrow_mut().push(Box::new(move |on| {
+                    if let Some(d) = w.upgrade() {
+                        d.set_pinned(on);
+                    }
+                }))
+            });
+        })*
+    }};
+}
+
+pub(crate) use pin;
+
+/// Escape closes the window like its X button does.
+fn close_on_escape<C: ComponentHandle + 'static>(d: &C) {
+    use slint::winit_030::{winit, EventResult, WinitWindowAccessor};
+    use winit::event::{ElementState, WindowEvent};
+    use winit::keyboard::{Key, NamedKey};
+    d.window().on_winit_window_event(|w, ev| {
+        if let WindowEvent::KeyboardInput { event, .. } = ev {
+            if event.state == ElementState::Pressed && !event.repeat && event.logical_key == Key::Named(NamedKey::Escape) {
+                w.dispatch_event(slint::platform::WindowEvent::CloseRequested);
+                return EventResult::PreventDefault;
+            }
+        }
+        EventResult::Propagate
+    });
+}
+
+/// Show the download windows that were sent to the tray again.
+fn restore_hidden_progress(ui: &Ui) {
+    let ids: Vec<u64> = HIDDEN_PROGRESS.with(|h| h.borrow_mut().drain().collect());
+    for id in ids {
+        if let Some((d, _)) = ui.progress.borrow().get(&id) {
+            open_window!(d);
+        }
     }
 }
 
 pub(crate) fn message(text: &str) {
     let _g = ModalGuard::new();
     rfd::MessageDialog::new().set_title(APP).set_description(text).show();
+}
+
+thread_local! {
+    /// how many flashes were shown (a newer one may take the place of an
+    /// older one before its timer is done)
+    static FLASH_SEQ: Cell<u64> = const { Cell::new(0) };
+}
+
+/// A word in the status bar that goes away again (no message box): what
+/// Ctrl+V did, what a drop did, what the clipboard monitor did.
+pub(crate) fn flash(ui: &Ui, text: String) {
+    let Some(m) = ui.ctx.main.upgrade() else { return };
+    m.set_flash(text.into());
+    // a number for this flash: a newer one may come before the timer is done
+    let n = FLASH_SEQ.with(|s| {
+        s.set(s.get() + 1);
+        s.get()
+    });
+    let weak = ui.ctx.main.clone();
+    Timer::single_shot(Duration::from_secs(4), move || {
+        // still the newest flash? then it is old enough to go
+        if FLASH_SEQ.with(|s| s.get()) == n {
+            if let Some(m) = weak.upgrade() {
+                m.set_flash("".into());
+            }
+        }
+    });
+}
+
+/// Hook the main window up for files and links dragged onto it from outside
+/// (the first call registers; the later ones change nothing).
+pub(crate) fn install_drops(ui: &Ui) {
+    let hwnd = {
+        let Some(m) = ui.ctx.main.upgrade() else { return };
+        winfx::hwnd_of(m.window())
+    };
+    dropfiles::set_handler({
+        let ui = ui.clone();
+        std::rc::Rc::new(move |action| {
+            let Some(m) = ui.ctx.main.upgrade() else { return };
+            match action {
+                dropfiles::DropAction::Hover(on) => m.set_drag_hover(on),
+                dropfiles::DropAction::Files(paths) => paste::handle_drop_files(&ui, &paths),
+                dropfiles::DropAction::Text(text) => paste::handle_drop_text(&ui, &text),
+            }
+        })
+    });
+    dropfiles::set_hwnd(hwnd.unwrap_or(0));
+    dropfiles::register_main();
 }
 
 pub(crate) fn ask(text: &str) -> bool {
@@ -1576,6 +1876,8 @@ pub(crate) fn bring_to_front(ctx: &Ctx) {
             winfx::place(w.as_weak(), true);
         }
         to_front!(w);
+        // shown from the tray icon: a quiet start still gets its drops
+        dropfiles::register_main();
     }
 }
 
@@ -1644,7 +1946,7 @@ pub(crate) fn apply_theme(ui: &Ui, mode: i32) {
     apply_look(ui, &look);
 }
 
-fn set_theme_of(t: Theme<'_>, look: &Look) {
+pub(crate) fn set_theme_of(t: Theme<'_>, look: &Look) {
     t.set_mode(look.mode);
     t.set_font_scale(look.scale);
     t.set_font_family(look.family.clone().into());
@@ -2175,11 +2477,17 @@ fn row_action(ui: &Ui, id: u64, action: &str) {
                 ui.ctx.mgr.restart(id);
             }
         }
-        "refresh" => extra::open_refresh(ui, id),
+        "refresh" => {
+            // a torrent keeps its magnet / .torrent file: nothing to refresh
+            if v.kind != DownloadKind::Torrent {
+                extra::open_refresh(ui, id);
+            }
+        }
         "copy" => {
             if let Ok(mut c) = arboard::Clipboard::new() {
                 let _ = c.set_text(v.url.clone());
             }
+            clipboard::mark_self_copy();
         }
         "move" => {
             if v.status == Status::Completed {
@@ -2206,6 +2514,7 @@ fn row_action(ui: &Ui, id: u64, action: &str) {
                         if let Ok(mut c) = arboard::Clipboard::new() {
                             let _ = c.set_text(hash);
                         }
+                        clipboard::mark_self_copy();
                         shown
                     }
                     Err(e) => tf("Could not read the file: {}", &[&e]),
@@ -2214,6 +2523,7 @@ fn row_action(ui: &Ui, id: u64, action: &str) {
             });
         }
         "properties" => extra::open_properties(ui, id),
+        "torrent" => torrent::open_files(ui, id),
         "delete" => delete_download(&ui.ctx, id),
         _ => {}
     }
@@ -2375,12 +2685,14 @@ pub(crate) fn fmt_time(t: chrono::DateTime<chrono::Utc>) -> String {
 
 fn row_of(v: &DownloadView, sel: bool) -> DownloadRow {
     let pct = v.progress();
+    let is_torrent = v.kind == DownloadKind::Torrent;
     let size = match v.total_size {
         Some(t) => fmt_size(t),
         None if v.downloaded > 0 => fmt_size(v.downloaded),
         None => String::new(),
     };
     let status = match v.status {
+        Status::Downloading if is_torrent && v.checking => t("Checking…"),
         Status::Downloading | Status::Paused if v.total_size.is_some() => format!("{:.2}%", pct * 100.0),
         Status::Downloading if v.parts_total > 0 => tf("{}/{} parts", &[&v.parts_done, &v.parts_total]),
         Status::Downloading => fmt_size(v.downloaded),
@@ -2397,6 +2709,7 @@ fn row_of(v: &DownloadView, sel: bool) -> DownloadRow {
     let description = match (&v.error, &v.description, v.kind) {
         (Some(e), _, _) if v.status == Status::Failed => e.clone(),
         (_, Some(d), _) => d.clone(),
+        (_, _, DownloadKind::Torrent) => tf("{}: torrent · {} files", &[&t(&v.category), &v.torrent.as_ref().map(|x| x.file_list.len()).unwrap_or(0)]),
         (_, _, DownloadKind::Dash) => tf("{}: video + audio", &[&t(&v.category)]),
         (_, _, DownloadKind::Hls) => tf("{}: stream", &[&t(&v.category)]),
         _ => t(&v.category),
@@ -2420,6 +2733,7 @@ fn row_of(v: &DownloadView, sel: bool) -> DownloadRow {
         save_to: v.save_path.parent().map(|p| p.display().to_string()).unwrap_or_default().into(),
         referer: v.referer().to_string().into(),
         parent: v.parent_page.clone().unwrap_or_default().into(),
+        is_torrent,
     }
 }
 
@@ -2445,7 +2759,7 @@ fn in_view(v: &DownloadView, view: &str) -> bool {
     }
 }
 
-fn update_model<T: Clone + PartialEq + 'static>(model: &VecModel<T>, rows: Vec<T>) {
+pub(crate) fn update_model<T: Clone + PartialEq + 'static>(model: &VecModel<T>, rows: Vec<T>) {
     if model.row_count() == rows.len() {
         for (i, r) in rows.into_iter().enumerate() {
             if model.row_data(i).as_ref() != Some(&r) {
@@ -2606,8 +2920,14 @@ pub(crate) fn refresh(ui: &Ui) {
 // ---------------------------------------------------------------- progress windows
 
 pub(crate) fn open_progress(ui: &Ui, id: u64) {
+    // torrents have their own window, with the file list
+    if ui.ctx.mgr.get(id).map(|v| v.kind == DownloadKind::Torrent).unwrap_or(false) {
+        torrent::open_files(ui, id);
+        return;
+    }
     let Some(v) = ui.ctx.mgr.get(id) else { return };
     if let Some((d, segs)) = ui.progress.borrow().get(&id) {
+        HIDDEN_PROGRESS.with(|h| h.borrow_mut().remove(&id));
         fill_details(d, segs, &v);
         open_window!(d);
         d.window().set_minimized(false);
@@ -2666,6 +2986,20 @@ pub(crate) fn open_progress(ui: &Ui, id: u64) {
         d.on_close_window(move || close_progress(&map, id));
     }
     {
+        // "Hide": to the tray (the download goes on); without a tray: minimized
+        let w = d.as_weak();
+        d.on_hide_to_tray(move || {
+            if let Some(d) = w.upgrade() {
+                if HAS_TRAY.with(|h| h.get()) {
+                    HIDDEN_PROGRESS.with(|h| h.borrow_mut().insert(id));
+                    let _ = d.hide();
+                } else {
+                    d.window().set_minimized(true);
+                }
+            }
+        });
+    }
+    {
         // the window's X stops the download
         let (map, mgr) = (ui.progress.clone(), ui.ctx.mgr.clone());
         d.window().on_close_requested(move || {
@@ -2716,7 +3050,7 @@ fn update_progress_windows(ui: &Ui) {
 }
 
 /// The progress of `v` as the taskbar shows it.
-fn taskbar_state(v: &DownloadView) -> winfx::TaskbarProgress {
+pub(crate) fn taskbar_state(v: &DownloadView) -> winfx::TaskbarProgress {
     use winfx::TaskbarProgress as P;
     let amount = match v.total_size {
         Some(t) if t > 0 => Some((v.downloaded.min(t), t)),

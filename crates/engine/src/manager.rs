@@ -9,11 +9,12 @@ use crate::http_download::{self, Cancelled, HttpJob, SegTable};
 use crate::limiter::SpeedLimiter;
 use crate::model::*;
 use crate::mux;
+use crate::torrent::{self, TorrentEngine, TorrentLimits};
 use crate::ytdlp;
 use crate::segments;
 use crate::store;
 use crate::system;
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use chrono::{Datelike, Timelike, Utc};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
@@ -87,6 +88,8 @@ pub struct Manager {
     proxy: Mutex<ProxyConfig>,
     rt: Handle,
     data_dir: PathBuf,
+    /// BitTorrent: the shared session owner (torrent.rs)
+    torrents: Arc<TorrentEngine>,
 }
 
 /// Default place for settings.json and downloads.json
@@ -143,6 +146,7 @@ impl Manager {
         }
         let startup_queues: Vec<u64> =
             settings.queues.iter().filter(|q| q.schedule.on_startup).map(|q| q.id).collect();
+        let torrents = TorrentEngine::new(data_dir.clone());
 
         let mgr = Arc::new(Manager {
             inner: Mutex::new(Inner {
@@ -167,6 +171,7 @@ impl Manager {
             proxy: Mutex::new(proxy),
             rt: rt.clone(),
             data_dir,
+            torrents,
         });
 
         for q in startup_queues {
@@ -308,6 +313,7 @@ impl Manager {
             retry_count: 0,
             pick_quality: req.pick_quality.clone(),
             work_stem: None,
+            torrent: None,
         };
         let mut rec = rec;
         if early {
@@ -335,6 +341,193 @@ impl Manager {
         drop(inner);
         self.pump();
         id
+    }
+
+    /// The BitTorrent session owner (the "Add torrent" windows use it to
+    /// read a torrent's contents before it starts).
+    pub fn torrent_engine(&self) -> Arc<TorrentEngine> {
+        self.torrents.clone()
+    }
+
+    /// Add a torrent (.torrent file or magnet link) from the "Add torrent"
+    /// window. The torrent itself was already read (its metadata is in the
+    /// request); here it becomes a list entry like every other download.
+    pub fn add_torrent(self: &Arc<Self>, req: TorrentRequest) -> anyhow::Result<DownloadId> {
+        let settings = self.settings();
+        let wanted = req.meta.size_of(&req.files);
+
+        // the name: the torrent's own, or the single file's name; a torrent
+        // with many files gets a folder of its own inside the chosen one
+        let wanted_name = torrent_display_name(&req.meta);
+        let multi = req.meta.files.len() > 1;
+
+        // keep our own copy of the .torrent file, so the download survives
+        // the original being moved or deleted
+        let source = match &req.source {
+            TorrentSource::Torrent(p) => {
+                let dest = self.torrents.library_dir().join(format!("{}.torrent", req.meta.info_hash));
+                if p != &dest {
+                    std::fs::copy(p, &dest)
+                        .with_context(|| format!("could not copy {}", p.display()))?;
+                }
+                TorrentSource::Torrent(dest)
+            }
+            other => other.clone(),
+        };
+
+        let mut inner = self.inner.lock().unwrap();
+        let name = free_name(&inner, &req.save_dir, &wanted_name);
+        let work_dir =
+            if multi { req.save_dir.join(&name) } else { req.save_dir.clone() };
+        // a file or folder with this name would be written over
+        let target = req.save_dir.join(&name);
+        if target.exists() {
+            anyhow::bail!("\"{}\" already exists there - choose another folder", name);
+        }
+        let _ = std::fs::create_dir_all(&req.save_dir);
+        if multi {
+            let _ = std::fs::create_dir_all(&work_dir);
+        }
+
+        let id = inner.next_id;
+        inner.next_id += 1;
+        let rec = DownloadRecord {
+            id,
+            url: source.display(),
+            final_url: None,
+            file_name: name,
+            save_dir: req.save_dir.clone(),
+            kind: DownloadKind::Torrent,
+            total_size: Some(wanted),
+            resumable: true,
+            segments: Vec::new(),
+            audio_url: None,
+            audio_segments: Vec::new(),
+            video_size: None,
+            source_page: None,
+            source_key: None,
+            queue: req.queue,
+            auto_name: false,
+            description: req.description.clone().filter(|d| !d.trim().is_empty()),
+            speed_limit_kb: None,
+            on_complete: AfterDone::Nothing,
+            downloaded: 0,
+            parts_total: 0,
+            parts_done: 0,
+            status: if req.start { Status::Queued } else { Status::Paused },
+            error: None,
+            headers: RequestHeaders::default(),
+            connections: 0,
+            category: settings.category_of(&req.meta.files.first().map(|f| f.path.clone()).unwrap_or_default(), &source.display()),
+            added_at: Utc::now(),
+            finished_at: None,
+            temp_dir: None,
+            queue_pos: id,
+            last_try: None,
+            server_time: None,
+            retry_count: 0,
+            pick_quality: None,
+            work_stem: None,
+            torrent: Some(TorrentEntry {
+                source,
+                files: req.files,
+                work_dir,
+                info_hash: req.meta.info_hash,
+                total_size: wanted,
+                file_list: req
+                    .meta
+                    .files
+                    .iter()
+                    .map(|f| TorrentFileSpec { path: f.path.clone(), size: f.size })
+                    .collect(),
+            }),
+        };
+        inner.entries.insert(
+            id,
+            Entry {
+                rec,
+                segs: Arc::new(Mutex::new(Vec::new())),
+                audio_segs: Arc::new(Mutex::new(Vec::new())),
+                limiter: Arc::new(SpeedLimiter::new(0)),
+                progress: Arc::new(Progress::default()),
+                task: None,
+                speed: SpeedMeter::default(),
+                quota_prev: 0,
+            },
+        );
+        inner.dirty = true;
+        drop(inner);
+        self.pump();
+        Ok(id)
+    }
+
+    /// Which files of a torrent to download (empty = all of them). Works
+    /// while it runs: the session starts / stops the files at once.
+    pub fn set_torrent_files(&self, id: DownloadId, files: Vec<usize>) {
+        let hash = {
+            let mut inner = self.inner.lock().unwrap();
+            let mut hash = None;
+            if let Some(e) = inner.entries.get_mut(&id) {
+                if let Some(t) = &mut e.rec.torrent {
+                    t.files = files.clone();
+                    hash = Some(t.info_hash.clone());
+                }
+            }
+            inner.dirty = true;
+            hash
+        };
+        let Some(hash) = hash else { return };
+        let engine = self.torrents.clone();
+        self.rt.spawn(async move { engine.update_files(&hash, files).await });
+    }
+
+    /// How much of every file of a torrent is on the disk, aligned with the
+    /// record's file list (empty while the torrent is not in the session,
+    /// e.g. before it was started after a restart).
+    pub fn torrent_have(&self, id: DownloadId) -> Vec<u64> {
+        let hash = {
+            let inner = self.inner.lock().unwrap();
+            let Some(e) = inner.entries.get(&id) else { return Vec::new() };
+            match &e.rec.torrent {
+                Some(t) => t.info_hash.clone(),
+                None => return Vec::new(),
+            }
+        };
+        let Ok(h) = torrent::parse_info_hash(&hash) else { return Vec::new() };
+        let Some(session) = self.torrents.session_if_running() else { return Vec::new() };
+        let Some(handle) = session.get(librqbit::api::TorrentIdOrHash::Hash(h)) else { return Vec::new() };
+        torrent::file_progress(&handle.stats())
+    }
+
+    /// Stop a torrent in the session when its list entry goes away. The
+    /// files stay unless `delete_files` is true - then the torrent's own
+    /// folder (many files) or its file (one file) goes too.
+    fn detach_torrent(&self, rec: &DownloadRecord, delete_files: bool) {
+        if rec.kind != DownloadKind::Torrent {
+            return;
+        }
+        let Some(t) = &rec.torrent else { return };
+        let engine = self.torrents.clone();
+        let hash = t.info_hash.clone();
+        let multi = t.work_dir != rec.save_dir;
+        let work_dir = t.work_dir.clone();
+        let target = rec.target_path();
+        self.rt.spawn(async move {
+            engine.remove(&hash, delete_files).await;
+            if delete_files {
+                for _ in 0..4 {
+                    let gone = if multi {
+                        !work_dir.exists() || std::fs::remove_dir_all(&work_dir).is_ok()
+                    } else {
+                        !target.exists() || std::fs::remove_file(&target).is_ok()
+                    };
+                    if gone {
+                        break;
+                    }
+                    tokio::time::sleep(Duration::from_millis(700)).await;
+                }
+            }
+        });
     }
 
     /// Resume / start one download (it waits in the queue if too many run).
@@ -405,13 +598,15 @@ impl Manager {
             t.cancel();
         }
         let rec = entry.rec;
+        self.detach_torrent(&rec, delete_file);
         self.rt.spawn(async move {
             // give running connections a moment to close their file handles
             tokio::time::sleep(Duration::from_millis(800)).await;
             for _ in 0..5 {
                 let mut ok = remove_temp_files(&rec);
                 if delete_file && rec.status == Status::Completed && rec.target_path().exists() {
-                    ok &= std::fs::remove_file(rec.target_path()).is_ok();
+                    let target = rec.target_path();
+                    ok &= if target.is_dir() { std::fs::remove_dir_all(&target).is_ok() } else { std::fs::remove_file(&target).is_ok() };
                 }
                 if ok {
                     break;
@@ -437,6 +632,7 @@ impl Manager {
             if let Some(t) = &e.task {
                 t.cancel();
             }
+            self.detach_torrent(&e.rec, false);
             if e.rec.status != Status::Completed {
                 recs.push(e.rec);
             }
@@ -501,6 +697,14 @@ impl Manager {
         if e.rec.status != Status::Completed {
             anyhow::bail!("only finished downloads can be moved");
         }
+        if e.rec.kind == DownloadKind::Torrent {
+            // seeding holds the file in the session: let it go before moving
+            if let Some(t) = &e.rec.torrent {
+                let engine = self.torrents.clone();
+                let hash = t.info_hash.clone();
+                self.rt.spawn(async move { engine.remove(&hash, false).await });
+            }
+        }
         let from = e.rec.target_path();
         if let Some(dir) = new_path.parent() {
             std::fs::create_dir_all(dir)?;
@@ -540,6 +744,10 @@ impl Manager {
     pub fn set_url(self: &Arc<Self>, id: DownloadId, url: &str, headers: Option<RequestHeaders>) {
         let mut inner = self.inner.lock().unwrap();
         if let Some(e) = inner.entries.get_mut(&id) {
+            // a torrent keeps its magnet / .torrent file: no address to refresh
+            if e.rec.kind == DownloadKind::Torrent {
+                return;
+            }
             if let Some(t) = &e.task {
                 t.cancel();
             }
@@ -568,8 +776,11 @@ impl Manager {
             if e.rec.status == Status::Completed {
                 anyhow::bail!("the address of a finished download can't be changed");
             }
-            e.rec.url = u.trim().to_string();
-            e.rec.final_url = None;
+            // a torrent's magnet / .torrent file is not editable
+            if e.rec.kind != DownloadKind::Torrent {
+                e.rec.url = u.trim().to_string();
+                e.rec.final_url = None;
+            }
         }
         e.rec.headers.referer = d.referer.filter(|r| !r.trim().is_empty());
         e.rec.description = d.description.filter(|r| !r.trim().is_empty());
@@ -588,6 +799,9 @@ impl Manager {
         }
         if e.rec.status == Status::Completed {
             anyhow::bail!("use Move / Rename for finished files");
+        }
+        if e.rec.kind == DownloadKind::Torrent {
+            anyhow::bail!("choose the folder in the torrent's Properties window instead");
         }
         let old = e.rec.clone();
         std::fs::create_dir_all(dir)?;
@@ -743,9 +957,18 @@ impl Manager {
     }
 
     pub fn remove_completed(&self) {
-        let mut inner = self.inner.lock().unwrap();
-        inner.entries.retain(|_, e| e.rec.status != Status::Completed);
-        inner.dirty = true;
+        let gone: Vec<DownloadRecord> = {
+            let mut inner = self.inner.lock().unwrap();
+            let gone: Vec<DownloadRecord> =
+                inner.entries.values().filter(|e| e.rec.status == Status::Completed).map(|e| e.rec.clone()).collect();
+            inner.entries.retain(|_, e| e.rec.status != Status::Completed);
+            inner.dirty = true;
+            gone
+        };
+        // finished torrents stop seeding when they leave the list
+        for rec in gone {
+            self.detach_torrent(&rec, false);
+        }
     }
 
     /// Start a failed/finished download again from zero.
@@ -754,6 +977,38 @@ impl Manager {
             let mut inner = self.inner.lock().unwrap();
             let Some(e) = inner.entries.get_mut(&id) else { return };
             if e.task.is_some() {
+                return;
+            }
+            if e.rec.kind == DownloadKind::Torrent {
+                // redownload: the torrent's data goes away and is fetched again
+                if let Some(t) = &e.rec.torrent {
+                    let engine = self.torrents.clone();
+                    let hash = t.info_hash.clone();
+                    let multi = t.work_dir != e.rec.save_dir;
+                    let work_dir = t.work_dir.clone();
+                    let target = e.rec.target_path();
+                    self.rt.spawn(async move {
+                        engine.remove(&hash, true).await;
+                        for _ in 0..4 {
+                            let gone = if multi {
+                                !work_dir.exists() || std::fs::remove_dir_all(&work_dir).is_ok()
+                            } else {
+                                !target.exists() || std::fs::remove_file(&target).is_ok()
+                            };
+                            if gone {
+                                break;
+                            }
+                            tokio::time::sleep(Duration::from_millis(700)).await;
+                        }
+                    });
+                }
+                e.rec.downloaded = 0;
+                e.rec.parts_done = 0;
+                e.rec.status = Status::Queued;
+                e.rec.error = None;
+                inner.dirty = true;
+                drop(inner);
+                self.pump();
                 return;
             }
             remove_temp_files(&e.rec);
@@ -979,7 +1234,15 @@ impl Manager {
     }
 
     async fn run_entry(self: Arc<Self>, id: DownloadId, cancel: CancellationToken) {
-        let result = self.run_download(id, cancel.clone()).await;
+        let is_torrent = {
+            let inner = self.inner.lock().unwrap();
+            inner.entries.get(&id).map(|e| e.rec.kind == DownloadKind::Torrent).unwrap_or(false)
+        };
+        let result = if is_torrent {
+            self.run_torrent(id, cancel.clone()).await
+        } else {
+            self.run_download(id, cancel.clone()).await
+        };
         {
             let mut inner = self.inner.lock().unwrap();
             let mut finished = false;
@@ -1192,8 +1455,97 @@ impl Manager {
                 hls::run(self.shared.clone(), job, progress, cancel).await?;
             }
             DownloadKind::Dash => unreachable!("handled by run_dash"),
+            DownloadKind::Torrent => unreachable!("handled by run_torrent"),
         }
         self.finish_file(id, &rec)
+    }
+
+    /// A torrent download: the queue starts it like every other download;
+    /// the work itself is done by the BitTorrent session (torrent.rs). This
+    /// function keeps the torrent running, reads its stats and maps them to
+    /// the usual progress / speed display until everything is downloaded.
+    async fn run_torrent(self: &Arc<Self>, id: DownloadId, cancel: CancellationToken) -> anyhow::Result<()> {
+        let (rec, progress) = {
+            let inner = self.inner.lock().unwrap();
+            let e = inner.entries.get(&id).ok_or_else(|| anyhow!("download was removed"))?;
+            (e.rec.clone(), e.progress.clone())
+        };
+        let entry = rec.torrent.clone().ok_or_else(|| anyhow!("this download has no torrent data"))?;
+        let settings = self.settings();
+        let engine = self.torrents.clone();
+        let limits = TorrentLimits { download_kb: settings.torrent_dl_limit_kb, upload_kb: settings.torrent_ul_limit_kb };
+        let wanted = entry.total_size;
+        system::check_room(&entry.work_dir, wanted.saturating_sub(rec.downloaded), Some(wanted))
+            .map_err(|m| anyhow!(m))?;
+
+        let mut handle = engine.add_paused(&entry.source, &entry.work_dir, entry.files.clone(), limits).await?;
+        // the folder changed in the "Add torrent" window after the torrent
+        // was read: put it into the session again, with the folder of now
+        if handle.output_folder() != entry.work_dir {
+            engine.remove(&entry.info_hash, false).await;
+            handle = engine.add_paused(&entry.source, &entry.work_dir, entry.files.clone(), limits).await?;
+        }
+        let session = engine.session(limits).await?;
+        // the torrent may already be in the session (the "Add torrent"
+        // window put it there to read its contents): its file selection is
+        // whatever it had, so the record's own selection is applied for sure
+        if !entry.files.is_empty() {
+            engine.update_files(&entry.info_hash, entry.files.clone()).await;
+        }
+        if handle.is_paused() {
+            session.unpause(&handle).await.context("could not start the torrent")?;
+        }
+        self.update(id, |x| {
+            if x.status == Status::Connecting {
+                x.status = Status::Downloading;
+            }
+        });
+
+        loop {
+            tokio::select! {
+                _ = cancel.cancelled() => {
+                    let _ = session.pause(&handle).await;
+                    progress.checking.store(false, Ordering::Relaxed);
+                    return Err(Cancelled.into());
+                }
+                _ = tokio::time::sleep(Duration::from_millis(500)) => {}
+            }
+            let stats = handle.stats();
+            if let Some(msg) = torrent::error_of(&stats) {
+                anyhow::bail!("{msg}");
+            }
+            let checking = torrent::is_checking(&stats);
+            progress.checking.store(checking, Ordering::Relaxed);
+            let have = torrent::selected_have(&stats, &entry.files, wanted).min(wanted);
+            progress.bytes.store(have, Ordering::Relaxed);
+            if let Some(live) = &stats.live {
+                progress.connections.store(live.snapshot.peer_stats.live, Ordering::Relaxed);
+                progress.seen.store(live.snapshot.peer_stats.seen, Ordering::Relaxed);
+                progress.up_bps.store(live.upload_speed.as_bytes(), Ordering::Relaxed);
+            } else {
+                progress.connections.store(0, Ordering::Relaxed);
+                progress.up_bps.store(0, Ordering::Relaxed);
+            }
+            progress.uploaded.store(stats.uploaded_bytes, Ordering::Relaxed);
+            if stats.finished && !checking && have >= wanted {
+                break;
+            }
+        }
+        // done: every chosen file is complete
+        progress.checking.store(false, Ordering::Relaxed);
+        progress.bytes.store(wanted, Ordering::Relaxed);
+        if !settings.torrent_seed {
+            // the user asked not to share: stop the torrent in the session
+            let _ = session.pause(&handle).await;
+        }
+        let target = rec.target_path();
+        if target.is_file() {
+            system::mark_from_internet(&target, "", None);
+            if settings.virus_scan {
+                system::virus_scan(&settings.virus_program, &settings.virus_args, &target);
+            }
+        }
+        Ok(())
     }
 
     /// A playlist video added as its page: ask yt-dlp for its links now and
@@ -1650,6 +2002,19 @@ impl Manager {
     }
 }
 
+/// The name a torrent shows in the list: the torrent's own, or the name of
+/// its only file.
+fn torrent_display_name(meta: &crate::torrent::TorrentMeta) -> String {
+    if meta.files.len() > 1 {
+        filename::sanitize(&meta.name)
+    } else if let Some(f) = meta.files.first() {
+        let base = f.path.rsplit(['/', '\\']).next().unwrap_or(&f.path);
+        filename::sanitize(base)
+    } else {
+        filename::sanitize(&meta.name)
+    }
+}
+
 /// Delete every temporary file of a download. Returns false if something
 /// could not be removed (still open), so the caller can retry.
 fn remove_temp_files(rec: &DownloadRecord) -> bool {
@@ -1712,6 +2077,12 @@ fn make_view(e: &Entry) -> DownloadView {
         last_try: e.rec.last_try,
         headers: e.rec.headers.clone(),
         parent_page: e.rec.source_page.clone().or_else(|| e.rec.headers.referer.clone()),
+        torrent: e.rec.torrent.clone(),
+        uploaded: e.progress.uploaded.load(Ordering::Relaxed),
+        up_speed: e.progress.up_bps.load(Ordering::Relaxed) as f64,
+        peers: e.progress.peers.load(Ordering::Relaxed),
+        seen: e.progress.seen.load(Ordering::Relaxed),
+        checking: e.progress.checking.load(Ordering::Relaxed),
         queue_pos: e.rec.queue_pos,
     }
 }

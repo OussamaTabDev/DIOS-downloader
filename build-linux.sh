@@ -85,8 +85,16 @@ sed "s|Exec=DIOSDownloader|Exec=$PREFIX/bin/DIOSDownloader|" dios-downloader.des
 if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$PREFIX/share/applications" 2>/dev/null || true
 fi
+# the browser extensions: where the program looks for them (Help > Add DIOS
+# Downloader to my browser), so the folder stays after this folder is deleted
+DATA="${XDG_DATA_HOME:-$HOME/.local/share}/dios-downloader"
+mkdir -p "$DATA"
+rm -rf "$DATA/extension" "$DATA/extension-firefox"
+cp -r extension "$DATA/extension"
+cp -r extension-firefox "$DATA/extension-firefox"
+cp -f dios-downloader-firefox*.xpi "$DATA/dios-downloader-firefox.xpi" 2>/dev/null || true
 echo "Installed. Start it from your applications menu or: $PREFIX/bin/DIOSDownloader"
-echo "Browser extensions are in: $(cd .. >/dev/null && pwd)/DIOSDownloader/extension*"
+echo "Browser extensions are in: $DATA"
 EOF
 chmod +x "$STAGE/DIOSDownloader/install.sh"
 
@@ -123,8 +131,35 @@ EOF
 TARBALL="$DIST/DIOSDownloader-$VERSION-linux-x64.tar.gz"
 tar -czf "$TARBALL" -C "$STAGE" DIOSDownloader
 
+# ------------------------------------------------- 4. native packages (.deb .rpm .AppImage)
+# Best effort: each one is only built when its tool is present. Skip with
+# SKIP_PACKAGES=1. Same staged folder feeds all three, see packaging/linux/.
+if [ "${SKIP_PACKAGES:-0}" = "1" ]; then
+    bold "==> Skipping native packages (SKIP_PACKAGES=1)"
+else
+    bold "==> Building native packages (deb / rpm / AppImage)"
+    if command -v dpkg-deb >/dev/null 2>&1; then
+        ./packaging/linux/make-deb.sh "$STAGE/DIOSDownloader" "$VERSION" || \
+            printf '\033[33mNOTE: the .deb failed (see above); the tarball is still complete.\033[0m\n'
+    else
+        echo "NOTE: dpkg-deb not found — no .deb (Debian/Ubuntu: 'apt install dpkg' provides it)."
+    fi
+    if command -v rpmbuild >/dev/null 2>&1; then
+        ./packaging/linux/make-rpm.sh "$STAGE/DIOSDownloader" "$VERSION" || \
+            printf '\033[33mNOTE: the .rpm failed (see above); the tarball is still complete.\033[0m\n'
+    else
+        echo "NOTE: rpmbuild not found — no .rpm (Debian/Ubuntu: 'sudo apt install rpm')."
+    fi
+    ./packaging/linux/make-appimage.sh "$STAGE/DIOSDownloader" "$VERSION" || \
+        printf '\033[33mNOTE: the AppImage failed (see above); the tarball is still complete.\033[0m\n'
+fi
+
 bold "==> DONE"
 echo
 echo "  >> $TARBALL"
+ls -1 dist/DIOSDownloader-* dist/dios-downloader-* 2>/dev/null | while read -r f; do echo "     $f"; done
 echo
-echo "  Install:  tar -xzf $(basename "$TARBALL") && ./DIOSDownloader/install.sh"
+echo "  Install (tarball):  tar -xzf $(basename "$TARBALL") && ./DIOSDownloader/install.sh"
+{ [ -f dist/dios-downloader_"$VERSION"_amd64.deb ] && echo "  Install (.deb):     sudo apt install ./dist/dios-downloader_${VERSION}_amd64.deb"; } || true
+{ command -v rpm >/dev/null 2>&1 && rpm dist/dios-downloader-"$VERSION"-1.x86_64.rpm >/dev/null 2>&1; } && echo "  Install (.rpm):     sudo dnf install ./dist/dios-downloader-${VERSION}-1.x86_64.rpm" || true
+{ [ -f "dist/DIOSDownloader-$VERSION-x86_64.AppImage" ] && echo "  Run (.AppImage):    chmod +x dist/DIOSDownloader-$VERSION-x86_64.AppImage && ./dist/DIOSDownloader-$VERSION-x86_64.AppImage"; } || true

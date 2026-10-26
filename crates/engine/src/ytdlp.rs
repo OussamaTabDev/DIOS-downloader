@@ -426,7 +426,9 @@ fn run_ytdlp(tool: &Path, page_url: &str, cookie_file: Option<&Path>) -> anyhow:
     let mut cmd = Command::new(tool);
     cmd.args(resolve_args(page_url, cookie_file));
     hide_window(&mut cmd);
-    let out = cmd.output().context("could not start yt-dlp")?;
+    let out = cmd
+        .output()
+        .with_context(|| format!("could not start yt-dlp ({})", tool.display()))?;
     if !out.status.success() {
         let err = String::from_utf8_lossy(&out.stderr);
         let line = err
@@ -508,7 +510,9 @@ pub fn playlist(url: &str) -> anyhow::Result<PlaylistInfo> {
     let mut cmd = Command::new(&tool);
     cmd.args(playlist_args(url));
     hide_window(&mut cmd);
-    let out = cmd.output().context("could not start yt-dlp")?;
+    let out = cmd
+        .output()
+        .with_context(|| format!("could not start yt-dlp ({})", tool.display()))?;
     if !out.status.success() {
         let err = String::from_utf8_lossy(&out.stderr);
         let line = err.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("unknown error");
@@ -583,7 +587,9 @@ pub fn update_now() -> anyhow::Result<String> {
     let mut cmd = Command::new(&tool);
     cmd.args(["--ignore-config", "-U"]);
     hide_window(&mut cmd);
-    let out = cmd.output().context("could not start yt-dlp")?;
+    let out = cmd
+        .output()
+        .with_context(|| format!("could not start yt-dlp ({})", tool.display()))?;
     let text = format!("{}\n{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
     let last = text.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("done").trim().to_string();
     if out.status.success() {

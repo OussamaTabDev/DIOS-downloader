@@ -379,8 +379,10 @@ pub(crate) fn whats_new() {
     crate::message(&text);
 }
 
-const TIPS: [&str; 14] = [
+const TIPS: [&str; 15] = [
     "Copy a download link anywhere (Ctrl+C) and DIOS Downloader offers to download it.",
+    "Press Ctrl+V in the download list to download what the clipboard holds — a link, a magnet or a .torrent file.",
+    "Drag a .torrent file (or a link) from Explorer and drop it on the main window to add it.",
     "Play a video on a web page and click \"Download this video\" above it to choose the quality.",
     "Right click a web page in Chrome or Edge and choose \"Download all links with DIOS Downloader\" to pick files from the page.",
     "Every download uses up to 32 connections. If a server is slow with many, add it to Options > Connection > Exceptions.",
@@ -393,7 +395,6 @@ const TIPS: [&str; 14] = [
     "Right click a category in the sidebar > Properties to change its file types and its own folder.",
     "View > Columns shows more columns, like Date Added, Save To and Referer.",
     "Tasks > Run site grabber collects every image, video or archive of a web site.",
-    "Hold Alt while clicking a link in the browser to let the browser download it by itself.",
 ];
 
 pub(crate) fn show_tip(ui: &Ui, from_menu: bool) {

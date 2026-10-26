@@ -1,9 +1,14 @@
-name: Build DIOS Downloader for Windows
+name: Build DIOS Downloader
 
-# Every push: build and keep the result as an artifact.
+# Every push: build Windows AND Linux and keep the results as artifacts.
 # A push to main whose commit message contains [release] also publishes a
-# GitHub release v<version> with the setup and version.json; installed
-# copies of the program read version.json of the latest release
+# GitHub release v<version> carrying everything:
+#   Windows : DIOSDownloader-Setup.exe + version.json (the in-app updater)
+#             + the signed Firefox add-on when AMO keys are set
+#   Linux   : tar.gz, .deb, .rpm, .AppImage  (built on ubuntu-22.04 so the
+#             binaries run on Debian 12 / Ubuntu 22.04 and newer)
+#   plus    : SHA256SUMS with the hash of every file
+# Installed copies of the program read version.json of the latest release
 # (Help > Check for updates, or by themselves when they start).
 
 on:
@@ -146,30 +151,102 @@ jobs:
           $json = "{`n  ""version"": ""$version"",`n  ""url"": ""https://github.com/${{ github.repository }}/releases/download/v$version/DIOSDownloader-Setup.exe"",`n  ""sha256"": ""$hash"",`n  ""sig"": ""$sig""`n}`n"
           [IO.File]::WriteAllText("$PWD/dist/version.json", $json)
           Get-Content dist/version.json
-          Compress-Archive -Path dist/DIOSDownloader-Setup.exe, dist/version.json -DestinationPath DIOSDownloader-windows.zip -Force
+          # one zip with everything the release will attach from Windows
+          $zipFiles = @("dist/DIOSDownloader-Setup.exe", "dist/version.json")
+          if (Test-Path dist/dios-downloader-firefox.xpi) { $zipFiles += "dist/dios-downloader-firefox.xpi", "dist/firefox-updates.json" }
+          Compress-Archive -Path $zipFiles -DestinationPath DIOSDownloader-windows.zip -Force
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: DIOSDownloader-windows
           path: DIOSDownloader-windows.zip
-      # a release is published only when the commit message says [release]
-      # (tag v<version> is created here); the same version again is skipped
-      - name: Publish release
-        if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]')
-        shell: pwsh
+
+  # --------------------------------------------------------------------- Linux
+  linux:
+    name: Linux (tar.gz + deb + rpm + AppImage)
+    runs-on: ubuntu-22.04   # older glibc: the binaries run on Debian 12 / Ubuntu 22.04+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Install build dependencies and the rpm tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
+            libwayland-dev libxcb1-dev pkg-config rpm
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      # one command builds and packs everything: tar.gz, .deb, .rpm, .AppImage
+      # (packaging/linux/make-*.sh; appimagetool is fetched on first use)
+      - name: Build and package
+        run: |
+          chmod +x build-linux.sh packaging/linux/*.sh
+          ./build-linux.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: DIOSDownloader-linux
+          path: |
+            dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
+            dist/*.AppImage
+          if-no-files-found: error
+
+  # ------------------------------------------------------------------- Release
+  # The two builds above run on every push. This job publishes only when the
+  # commit message says [release]: one GitHub release v<version> that carries
+  # the Windows setup + version.json (+ the signed Firefox add-on), all four
+  # Linux packages, and SHA256SUMS. Older releases (and their tags) are
+  # removed, so "latest" always means this version.
+  publish:
+    name: Publish GitHub Release
+    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]')
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # not pinned: no trustworthy offline SHA known; a moved v4 tag can only
+      # break the run, never alter what gets released
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Gather the files and their SHA-256 sums
+        run: |
+          set -e
+          mkdir -p dist
+          unzip -j -o "artifacts/DIOSDownloader-windows/DIOSDownloader-windows.zip" -d dist
+          cp -f artifacts/DIOSDownloader-linux/* dist/
+          cd dist
+          find . -maxdepth 1 -type f ! -name 'SHA256SUMS' -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS
+          cat SHA256SUMS
+      - name: Create the release and remove older ones
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "v$env:VERSION" --repo "${{ github.repository }}" *> $null
-          if ($LASTEXITCODE -eq 0) { Write-Host "v$env:VERSION is already released"; exit 0 }
-          $files = @("dist/DIOSDownloader-Setup.exe", "dist/version.json")
-          if (Test-Path dist/dios-downloader-firefox.xpi) { $files += "dist/dios-downloader-firefox.xpi", "dist/firefox-updates.json" }
-          gh release create "v$env:VERSION" @files --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "DIOS Downloader $env:VERSION" --notes "DIOS Downloader $env:VERSION" --latest
-          if ($LASTEXITCODE -ne 0) { throw "could not create the release" }
+          set -e
+          VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+          if gh release view "v$VERSION" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "v$VERSION is already released"
+            exit 0
+          fi
+          cat > release-notes.md <<EOF
+          DIOS Downloader $VERSION
+
+          - Windows: DIOSDownloader-Setup.exe (installs for the current user)
+          - Debian/Ubuntu: sudo apt install ./dios-downloader_*_amd64.deb
+          - Fedora/openSUSE: sudo dnf install ./dios-downloader-*.x86_64.rpm
+          - Any Linux (x64): run DIOSDownloader-*.x86_64.AppImage, or unpack the tar.gz and run install.sh
+          - SHA256SUMS lists the hash of every file
+          EOF
+          gh release create "v$VERSION" dist/* \
+            --repo "${{ github.repository }}" --target "${{ github.sha }}" \
+            --title "DIOS Downloader $VERSION" \
+            --notes-file release-notes.md --latest
           # only the newest release stays: older ones (and their tags) go
-          $tags = gh release list --repo "${{ github.repository }}" --limit 100 --json tagName -q '.[].tagName'
-          foreach ($t in $tags) {
-            if ($t -and $t -ne "v$env:VERSION") {
-              Write-Host "Removing old release $t"
-              gh release delete $t --repo "${{ github.repository }}" --yes --cleanup-tag
-            }
-          }
+          tags="$(gh release list --repo "${{ github.repository }}" --limit 100 --json tagName -q '.[].tagName')"
+          for t in $tags; do
+            if [ -n "$t" ] && [ "$t" != "v$VERSION" ]; then
+              echo "Removing old release $t"
+              gh release delete "$t" --repo "${{ github.repository }}" --yes --cleanup-tag
+            fi
+          done

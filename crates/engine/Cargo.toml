@@ -24,6 +24,9 @@ filetime = "0.2"
 sha2 = "0.10"
 # Ed25519 check of signed updates (selfupdate.rs)
 ring = "0.17"
+# BitTorrent: .torrent files and magnet links, downloaded by librqbit
+# (DHT, trackers, uTP and UPnP port mapping are all built in)
+librqbit = { version = "9.0.1", default-features = false, features = ["default-tls"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = [

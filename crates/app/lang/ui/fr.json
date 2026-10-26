@@ -436,5 +436,6 @@
     "Picture visibility": "Visibilité de l'image",
     "Hide": "Masquer",
     "Progress": "Progression",
-    "Progress bar": "Barre de progression"
+    "Progress bar": "Barre de progression",
+    "Hide to tray": "Masquer dans la zone de notification"
 }

@@ -19,6 +19,9 @@ msgstr "Birlikte aç…"
 msgid "Open folder"
 msgstr "Klasörü aç"
 
+msgid "Torrent contents…"
+msgstr "Torrent contents…"
+
 msgid "Resume download"
 msgstr "İndirmeyi sürdür"
 
@@ -127,6 +130,15 @@ msgstr "Yeni indirme ekle…"
 msgid "Add batch download…"
 msgstr "Toplu indirme ekle…"
 
+msgid "Add torrent file…"
+msgstr "Add torrent file…"
+
+msgid "Add magnet link…"
+msgstr "Add magnet link…"
+
+msgid "Paste download link"
+msgstr "Paste download link"
+
 msgid "Add batch download from clipboard"
 msgstr "Panodan toplu indirme ekle"
 
@@ -156,6 +168,9 @@ msgstr "Metin dosyasından…"
 
 msgid "Open download folder"
 msgstr "İndirme klasörünü aç"
+
+msgid "Hide to tray"
+msgstr "Bildirim alanına gizle"
 
 msgid "Exit"
 msgstr "Çıkış"
@@ -225,6 +240,9 @@ msgstr "Seçenekler…"
 
 msgid "View"
 msgstr "Görünüm"
+
+msgid "Filter the list…"
+msgstr "Listeyi filtrele…"
 
 msgid "Show categories"
 msgstr "Kategorileri göster"
@@ -319,6 +337,12 @@ msgstr "URL ekle"
 msgid "Add Batch"
 msgstr "Toplu ekle"
 
+msgid "Add Torrent"
+msgstr "Add Torrent"
+
+msgid "Paste"
+msgstr "Paste"
+
 msgid "Resume"
 msgstr "Sürdür"
 
@@ -358,8 +382,8 @@ msgstr "Toplayıcı"
 msgid "Playlist"
 msgstr "Liste"
 
-msgid "Filter the list…"
-msgstr "Listeyi filtrele…"
+msgid "Hide"
+msgstr "Gizle"
 
 msgid "Categories"
 msgstr "Kategoriler"
@@ -390,6 +414,9 @@ msgstr "“{}” ile eşleşen bir şey yok."
 
 msgid "No downloads here.\nClick “Add URL”, copy a link, or download something in your browser."
 msgstr "Burada indirme yok.\n“URL ekle”ye tıklayın, bir bağlantı kopyalayın ya da tarayıcınızda bir şey indirin."
+
+msgid "Drop to add to DIOS Downloader"
+msgstr "Drop to add to DIOS Downloader"
 
 msgid "Download File Info"
 msgstr "Dosya bilgileri"
@@ -1162,6 +1189,21 @@ msgstr "MB, her"
 msgid "hours"
 msgstr "saatte"
 
+msgid "Torrents (BitTorrent)"
+msgstr "Torrents (BitTorrent)"
+
+msgid "Share finished torrents (seeding)"
+msgstr "Share finished torrents (seeding)"
+
+msgid "Download limit for all torrents (KB/s, 0 = off)"
+msgstr "Download limit for all torrents (KB/s, 0 = off)"
+
+msgid "Upload limit for all torrents (KB/s, 0 = off)"
+msgstr "Upload limit for all torrents (KB/s, 0 = off)"
+
+msgid "Torrents connect to many computers; the limits apply to all of them together."
+msgstr "Torrents connect to many computers; the limits apply to all of them together."
+
 msgid "No proxy"
 msgstr "Proxy yok"
 
@@ -1311,6 +1353,3 @@ msgstr "DIOS Downloader'u beğendiniz mi? Geliştirilmesine destek olabilirsiniz
 
 msgid "Support with PayPal"
 msgstr "PayPal ile destek ol"
-
-msgid "Hide"
-msgstr "Gizle"

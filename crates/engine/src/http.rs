@@ -21,6 +21,16 @@ pub struct Progress {
     pub parts_total: AtomicU32,
     pub parts_done: AtomicU32,
     pub assembling: AtomicBool,
+    // ---- torrents only (zero for the other downloads)
+    /// bytes per second sent to other peers
+    pub up_bps: AtomicU64,
+    /// bytes sent to other peers in total
+    pub uploaded: AtomicU64,
+    /// peers connected right now / peers seen
+    pub peers: AtomicU32,
+    pub seen: AtomicU32,
+    /// still comparing the files on the disk with what is missing
+    pub checking: AtomicBool,
 }
 
 /// Counts an open connection for as long as it lives.

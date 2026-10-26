@@ -1,0 +1,768 @@
+// Torrent windows: "Add torrent" (a .torrent file or a magnet link) and
+// the torrent's own progress window with its file list.
+// Style follows app.slint / dialogs.slint (fluent widgets, Theme colors).
+
+import { Button, LineEdit, ComboBox, CheckBox, ListView } from "std-widgets.slint";
+import { Theme, ThemedWindow, TorrentFileRow, AccentButton, Icon, Glyph, TypeIcon } from "common.slint";
+
+component TTab inherits Rectangle {
+    in property <string> text;
+    in property <bool> active;
+    callback clicked();
+    height: 26px;
+    width: label.preferred-width + 24px;
+    background: root.active ? Theme.panel : ta.has-hover ? Theme.hover : Theme.window;
+    border-width: 1px;
+    border-color: Theme.line;
+    ta := TouchArea {
+        width: parent.width;
+        height: parent.height;
+        clicked => {
+            root.clicked();
+        }
+    }
+    label := Text {
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        font-size: 12px * Theme.font-scale;
+        font-weight: root.active ? 600 : 400;
+        color: Theme.text;
+    }
+    if root.active: Rectangle {
+        x: 1px;
+        y: parent.height - 1px;
+        width: parent.width - 2px;
+        height: 2px;
+        background: Theme.panel;
+    }
+}
+
+// One file of a torrent, with the "include" box of the playlist window.
+component FileRow inherits Rectangle {
+    in property <TorrentFileRow> data;
+    in property <bool> show-progress;
+    callback toggled();
+    height: max(26px, 26px * Theme.font-scale);
+    background: ta.has-hover ? Theme.hover : transparent;
+    ta := TouchArea {
+        x: 0;
+        width: parent.width;
+        height: parent.height;
+        clicked => {
+            root.toggled();
+        }
+    }
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 6px;
+        // the "download this file" box
+        Rectangle {
+            width: 26px;
+            Rectangle {
+                y: (parent.height - 14px) / 2;
+                width: 14px;
+                height: 14px;
+                border-width: 1px;
+                border-radius: 2px;
+                border-color: root.data.checked ? Theme.accent : Theme.muted;
+                background: root.data.checked ? Theme.accent : Theme.input-bg;
+                if root.data.checked: Glyph {
+                    x: 1px;
+                    y: 1px;
+                    width: 12px;
+                    height: 12px;
+                    kind: "check";
+                    tint: white;
+                }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            Text {
+                text: root.data.name;
+                overflow: elide;
+                color: Theme.text;
+                font-size: 12px * Theme.font-scale;
+            }
+            if root.show-progress: Rectangle {
+                height: 4px;
+                border-radius: 2px;
+                background: Theme.bar-bg;
+                clip: true;
+                Rectangle {
+                    x: 0;
+                    width: parent.width * Math.min(1.0, Math.max(0.0, root.data.progress));
+                    height: parent.height;
+                    border-radius: 2px;
+                    background: root.data.progress >= 1.0 ? Theme.ok : Theme.accent;
+                }
+            }
+        }
+        Text {
+            text: root.data.size;
+            color: Theme.muted;
+            vertical-alignment: center;
+            width: 84px;
+            horizontal-alignment: right;
+            font-size: 11px * Theme.font-scale;
+        }
+    }
+}
+
+// "Add torrent": pick a .torrent file or paste a magnet link, see what is
+// inside it, choose the files and the folder, then start (or wait).
+export component TorrentAddDialog inherits ThemedWindow {
+    // set for a moment so the window comes in front of the browser
+    in property <bool> front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
+    title: @tr("Add torrent");
+    preferred-width: 680px;
+    min-width: 580px;
+    preferred-height: 620px;
+
+    // 0 = a .torrent file, 1 = a magnet link
+    in-out property <int> mode: 0;
+    in property <string> torrent-path;
+    in-out property <string> magnet;
+    // 0 nothing chosen yet, 1 reading the torrent, 2 the files below are real
+    in property <int> resolved: 0;
+    in property <string> name;
+    in property <string> size-text;
+    in property <string> info;
+    in property <bool> info-error;
+    in property <[TorrentFileRow]> files;
+    in property <string> files-summary;
+    in-out property <string> folder;
+    in property <[string]> queue-names: ["Main queue"];
+    in-out property <int> queue-index: 0;
+    in-out property <bool> start-now: true;
+    in-out property <string> description;
+
+    callback choose-file();
+    callback browse-folder();
+    callback resolve();
+    callback paste-magnet();
+    callback mode-changed();
+    callback file-toggled(int);
+    callback all-files(bool);
+    callback start-torrent();
+    callback later();
+    callback cancel();
+
+    VerticalLayout {
+        padding: 14px;
+        spacing: 10px;
+
+        HorizontalLayout {
+            spacing: 2px;
+            TTab {
+                text: @tr("Torrent file");
+                active: root.mode == 0;
+                clicked => {
+                    root.mode = 0;
+                    root.mode-changed();
+                }
+            }
+            TTab {
+                text: @tr("Magnet link");
+                active: root.mode == 1;
+                clicked => {
+                    root.mode = 1;
+                    root.mode-changed();
+                }
+            }
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+        }
+
+        if root.mode == 0: HorizontalLayout {
+            spacing: 6px;
+            Button {
+                text: @tr("Choose a .torrent file…");
+                clicked => {
+                    root.choose-file();
+                }
+            }
+            Rectangle {
+                border-width: 1px;
+                border-color: Theme.line;
+                background: Theme.panel;
+                border-radius: 4px;
+                horizontal-stretch: 1;
+                Text {
+                    x: 8px;
+                    width: parent.width - 16px;
+                    height: parent.height;
+                    text: root.torrent-path;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    color: Theme.text;
+                    font-size: 12px * Theme.font-scale;
+                }
+            }
+        }
+        if root.mode == 1: VerticalLayout {
+            spacing: 6px;
+            HorizontalLayout {
+                spacing: 6px;
+                LineEdit {
+                    text <=> root.magnet;
+                    placeholder-text: "magnet:?xt=urn:btih:…";
+                    horizontal-stretch: 1;
+                    accepted(t) => {
+                        root.resolve();
+                    }
+                }
+                Button {
+                    text: @tr("Paste");
+                    clicked => {
+                        root.paste-magnet();
+                    }
+                }
+                Button {
+                    text: @tr("Check");
+                    clicked => {
+                        root.resolve();
+                    }
+                }
+            }
+            Text {
+                text: @tr("A magnet link finds the torrent through the DHT network of BitTorrent - it can take a minute.");
+                color: Theme.muted;
+                font-size: 11px * Theme.font-scale;
+                wrap: word-wrap;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 12px;
+            VerticalLayout {
+                width: 110px;
+                spacing: 6px;
+                alignment: start;
+                padding-top: 4px;
+                Rectangle {
+                    height: 72px;
+                    Icon {
+                        kind: "torrent";
+                        width: 64px;
+                        height: 64px;
+                        x: (parent.width - 64px) / 2;
+                    }
+                }
+                Text {
+                    text: root.size-text;
+                    horizontal-alignment: center;
+                    font-size: 12px * Theme.font-scale;
+                    font-weight: 600;
+                    color: Theme.text;
+                    wrap: word-wrap;
+                }
+            }
+            GridLayout {
+                spacing: 8px;
+                horizontal-stretch: 1;
+                Row {
+                    Text {
+                        text: @tr("Name");
+                        vertical-alignment: center;
+                        color: Theme.text;
+                    }
+                    Text {
+                        text: root.name;
+                        font-weight: 600;
+                        overflow: elide;
+                        vertical-alignment: center;
+                        color: Theme.text;
+                        horizontal-stretch: 1;
+                    }
+                }
+                Row {
+                    Text {
+                        text: @tr("Save to");
+                        vertical-alignment: center;
+                        color: Theme.text;
+                    }
+                    HorizontalLayout {
+                        spacing: 6px;
+                        LineEdit {
+                            text <=> root.folder;
+                            horizontal-stretch: 1;
+                        }
+                        Button {
+                            text: "…";
+                            clicked => {
+                                root.browse-folder();
+                            }
+                        }
+                    }
+                }
+                Row {
+                    Text {
+                        text: @tr("Queue");
+                        vertical-alignment: center;
+                        color: Theme.text;
+                    }
+                    HorizontalLayout {
+                        ComboBox {
+                            model: root.queue-names;
+                            current-index <=> root.queue-index;
+                        }
+                        Rectangle {
+                            horizontal-stretch: 1;
+                        }
+                    }
+                }
+                Row {
+                    Text {
+                        text: @tr("Description");
+                        vertical-alignment: center;
+                        color: Theme.text;
+                    }
+                    LineEdit {
+                        text <=> root.description;
+                        placeholder-text: @tr("optional note");
+                    }
+                }
+            }
+        }
+
+        // ---- the files inside the torrent
+        VerticalLayout {
+            spacing: 6px;
+            vertical-stretch: 1;
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: @tr("Files");
+                    font-weight: 600;
+                    color: Theme.text;
+                    vertical-alignment: center;
+                }
+                Text {
+                    text: root.files-summary;
+                    color: Theme.muted;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+                Button {
+                    text: @tr("All");
+                    enabled: root.resolved == 2;
+                    clicked => {
+                        root.all-files(true);
+                    }
+                }
+                Button {
+                    text: @tr("None");
+                    enabled: root.resolved == 2;
+                    clicked => {
+                        root.all-files(false);
+                    }
+                }
+            }
+            Rectangle {
+                vertical-stretch: 1;
+                min-height: 140px;
+                background: Theme.panel;
+                border-width: 1px;
+                border-color: Theme.line;
+                clip: true;
+                if root.resolved == 0: Text {
+                    width: parent.width - 40px;
+                    x: 20px;
+                    y: parent.height / 2 - 24px;
+                    text: root.mode == 0 ? @tr("Choose a torrent file to see what is inside it.") : @tr("Paste a magnet link and press Check.");
+                    horizontal-alignment: center;
+                    color: Theme.muted;
+                    wrap: word-wrap;
+                }
+                if root.resolved == 1: HorizontalLayout {
+                    alignment: center;
+                    Text {
+                        text: @tr("Fetching the torrent info…");
+                        color: Theme.muted;
+                        vertical-alignment: center;
+                    }
+                }
+                if root.resolved == 2: ListView {
+                    for f in root.files: FileRow {
+                        data: f;
+                        show-progress: false;
+                        toggled => {
+                            root.file-toggled(f.index);
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            height: 32px;
+            border-width: 1px;
+            border-color: root.info-error ? Theme.err : Theme.line;
+            background: Theme.panel;
+            Text {
+                x: 10px;
+                width: parent.width - 20px;
+                height: parent.height;
+                vertical-alignment: center;
+                text: root.info;
+                color: root.info-error ? Theme.err : Theme.muted;
+                overflow: elide;
+                font-size: 12px * Theme.font-scale;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            CheckBox {
+                text: @tr("Start now");
+                checked <=> root.start-now;
+            }
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+            Button {
+                text: @tr("Download Later");
+                enabled: root.resolved == 2;
+                clicked => {
+                    root.later();
+                }
+            }
+            AccentButton {
+                text: @tr("Start Download");
+                enabled: root.resolved == 2;
+                clicked => {
+                    root.start-torrent();
+                }
+            }
+            Button {
+                text: @tr("Cancel");
+                clicked => {
+                    root.cancel();
+                }
+            }
+        }
+    }
+}
+
+// The torrent's progress window: speeds up and down, peers, and the file
+// list where any file can be dropped (or added back) while it runs.
+export component TorrentDetailsDialog inherits ThemedWindow {
+    // set for a moment so the window comes in front of the browser
+    in property <bool> front;
+    always-on-top: root.front;
+    title: root.percent + " " + root.name;
+    preferred-width: 660px;
+    min-width: 560px;
+    preferred-height: 560px;
+
+    in property <string> name;
+    in property <string> percent;
+    in property <string> url;
+    in property <string> status;
+    in property <string> size;
+    in property <string> downloaded;
+    in property <string> uploaded;
+    in property <string> down-speed;
+    in property <string> up-speed;
+    in property <string> eta;
+    in property <string> peers;
+    in property <string> error;
+    in property <string> kind: "general";
+    in property <float> progress;
+    in property <int> state;
+    in property <bool> checking;
+    in property <[TorrentFileRow]> files;
+    in property <string> files-summary;
+    in-out property <bool> show-files: true;
+
+    callback pause();
+    callback resume();
+    callback hide-to-tray();
+    callback cancel-download();
+    callback close-window();
+    callback open-folder();
+    callback file-toggled(int);
+    callback all-files(bool);
+
+    VerticalLayout {
+        padding: 10px;
+        spacing: 8px;
+
+        HorizontalLayout {
+            spacing: 8px;
+            TypeIcon {
+                kind: root.kind;
+                width: 20px;
+                height: 20px;
+            }
+            Text {
+                text: root.url;
+                font-size: 11px * Theme.font-scale;
+                overflow: elide;
+                color: Theme.accent;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+        }
+        Rectangle {
+            height: 1px;
+            background: Theme.grid;
+        }
+        VerticalLayout {
+            spacing: 3px;
+            HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: @tr("Status");
+                    color: Theme.muted;
+                    width: 125px;
+                }
+                Text {
+                    text: root.status;
+                    color: root.state == 4 ? Theme.err : Theme.text;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: @tr("Selected size");
+                    color: Theme.muted;
+                    width: 125px;
+                }
+                Text {
+                    text: root.size;
+                    color: Theme.text;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: @tr("Downloaded");
+                    color: Theme.muted;
+                    width: 125px;
+                }
+                Text {
+                    text: root.downloaded;
+                    color: Theme.text;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: @tr("Uploaded");
+                    color: Theme.muted;
+                    width: 125px;
+                }
+                Text {
+                    text: root.uploaded;
+                    color: Theme.text;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: @tr("Download speed");
+                    color: Theme.muted;
+                    width: 125px;
+                }
+                Text {
+                    text: root.down-speed;
+                    color: Theme.text;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: @tr("Upload speed");
+                    color: Theme.muted;
+                    width: 125px;
+                }
+                Text {
+                    text: root.up-speed;
+                    color: Theme.text;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: @tr("Time left");
+                    color: Theme.muted;
+                    width: 125px;
+                }
+                Text {
+                    text: root.eta;
+                    color: Theme.text;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: @tr("Peers");
+                    color: Theme.muted;
+                    width: 125px;
+                }
+                Text {
+                    text: root.peers;
+                    color: Theme.text;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+            }
+        }
+        if root.error != "": Text {
+            text: root.error;
+            color: Theme.err;
+            wrap: word-wrap;
+            font-size: 11px * Theme.font-scale;
+        }
+
+        Rectangle {
+            height: 18px;
+            border-width: 1px;
+            border-color: Theme.line;
+            background: Theme.bar-bg;
+            clip: true;
+            Rectangle {
+                x: 1px;
+                y: 1px;
+                height: parent.height - 2px;
+                width: (parent.width - 2px) * root.progress;
+                // running: the DIOS violet; finished: green, like the list
+                background: root.state == 3 ? Theme.ok : Theme.accent;
+                animate width {
+                    duration: 100ms;
+                    easing: linear;
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            Button {
+                text: root.show-files ? @tr("<< Hide files") : @tr("Show files >>");
+                clicked => {
+                    root.show-files = !root.show-files;
+                }
+            }
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+            if root.state == 0 || root.state == 1: Button {
+                text: @tr("Pause");
+                clicked => {
+                    root.pause();
+                }
+            }
+            if root.state == 2 || root.state == 4: AccentButton {
+                text: @tr("Resume");
+                clicked => {
+                    root.resume();
+                }
+            }
+            if root.state != 3: Button {
+                text: @tr("Hide");
+                clicked => {
+                    root.hide-to-tray();
+                }
+            }
+            Button {
+                text: @tr("Open folder");
+                clicked => {
+                    root.open-folder();
+                }
+            }
+            Button {
+                text: root.state == 3 ? @tr("Close") : @tr("Cancel");
+                clicked => {
+                    if (root.state == 3) {
+                        root.close-window();
+                    } else {
+                        root.cancel-download();
+                    }
+                }
+            }
+        }
+
+        if root.show-files: VerticalLayout {
+            spacing: 6px;
+            vertical-stretch: 1;
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: @tr("Files");
+                    font-size: 11px * Theme.font-scale;
+                    color: Theme.muted;
+                    vertical-alignment: center;
+                }
+                Text {
+                    text: root.files-summary;
+                    font-size: 11px * Theme.font-scale;
+                    color: Theme.muted;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+                Button {
+                    text: @tr("All");
+                    clicked => {
+                        root.all-files(true);
+                    }
+                }
+                Button {
+                    text: @tr("None");
+                    clicked => {
+                        root.all-files(false);
+                    }
+                }
+            }
+            Rectangle {
+                vertical-stretch: 1;
+                min-height: 120px;
+                background: Theme.panel;
+                border-width: 1px;
+                border-color: Theme.line;
+                clip: true;
+                ListView {
+                    for f in root.files: FileRow {
+                        data: f;
+                        show-progress: true;
+                        toggled => {
+                            root.file-toggled(f.index);
+                        }
+                    }
+                }
+            }
+            Text {
+                text: @tr("Untick a file to stop downloading it; tick it again to get it back. What is already on the disk stays.");
+                font-size: 11px * Theme.font-scale;
+                color: Theme.muted;
+                wrap: word-wrap;
+            }
+        }
+    }
+}

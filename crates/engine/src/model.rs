@@ -44,6 +44,9 @@ pub enum DownloadKind {
     /// Separate video and audio streams (YouTube style, "DASH"):
     /// both are downloaded, then merged into one file with ffmpeg
     Dash,
+    /// BitTorrent: a .torrent file or magnet link, many files at once,
+    /// from many peers (torrent.rs)
+    Torrent,
 }
 
 /// Extra request data, usually handed over by the browser extension so that
@@ -113,6 +116,68 @@ pub struct NewDownload {
     /// started at once while the "Download File Info" window is open
     /// (its name and folder can change until the user confirms)
     pub early: bool,
+    pub start: bool,
+}
+
+/// How a torrent was given to the app. Persisted in the download list.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TorrentSource {
+    /// The .torrent file, kept in a copy inside the app data folder so the
+    /// download survives the original being moved or deleted
+    Torrent(PathBuf),
+    Magnet(String),
+}
+
+impl TorrentSource {
+    /// What the list and the windows show as the download's address.
+    pub fn display(&self) -> String {
+        match self {
+            TorrentSource::Torrent(p) => p.display().to_string(),
+            TorrentSource::Magnet(m) => m.clone(),
+        }
+    }
+    pub fn is_magnet(&self) -> bool {
+        matches!(self, TorrentSource::Magnet(_))
+    }
+}
+
+/// One file of a torrent, kept in the list entry for the file windows.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TorrentFileSpec {
+    pub path: String,
+    pub size: u64,
+}
+
+/// Everything a torrent download keeps about its torrent.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TorrentEntry {
+    pub source: TorrentSource,
+    /// indices of the chosen files (empty = all of them)
+    #[serde(default)]
+    pub files: Vec<usize>,
+    /// the folder librqbit writes into: the chosen folder, plus the
+    /// torrent's own folder inside it when it has many files
+    pub work_dir: PathBuf,
+    /// info hash in hex (finds the torrent again after a restart)
+    pub info_hash: String,
+    /// bytes of the chosen files
+    pub total_size: u64,
+    /// every file of the torrent with its size (for the file windows)
+    #[serde(default)]
+    pub file_list: Vec<TorrentFileSpec>,
+}
+
+/// A request to add a torrent download (from the "Add torrent" window).
+#[derive(Debug, Clone)]
+pub struct TorrentRequest {
+    pub source: TorrentSource,
+    pub meta: crate::torrent::TorrentMeta,
+    /// indices of the chosen files (empty = all)
+    pub files: Vec<usize>,
+    /// the folder chosen in the window
+    pub save_dir: PathBuf,
+    pub queue: Option<u64>,
+    pub description: Option<String>,
     pub start: bool,
 }
 
@@ -191,6 +256,9 @@ pub struct DownloadRecord {
     /// folder may still change
     #[serde(default)]
     pub work_stem: Option<String>,
+    /// torrent downloads: the torrent behind this list entry
+    #[serde(default)]
+    pub torrent: Option<TorrentEntry>,
 }
 
 impl DownloadRecord {
@@ -243,6 +311,15 @@ impl DownloadRecord {
     pub fn request_url(&self) -> &str {
         self.final_url.as_deref().unwrap_or(&self.url)
     }
+    /// The address the torrent was given to the app with.
+    pub fn torrent_source(&self) -> Option<&TorrentSource> {
+        self.torrent.as_ref().map(|t| &t.source)
+    }
+    /// Bytes of the chosen files of a torrent (the whole torrent when all
+    /// files are chosen).
+    pub fn torrent_wanted(&self) -> u64 {
+        self.torrent.as_ref().map(|t| t.total_size).unwrap_or(0)
+    }
 }
 
 /// Snapshot of a download for the UI.
@@ -278,11 +355,28 @@ pub struct DownloadView {
     /// page the download came from
     pub parent_page: Option<String>,
     pub queue_pos: u64,
+    /// torrent downloads: the torrent behind this entry (file list, chosen
+    /// files, where it writes)
+    pub torrent: Option<TorrentEntry>,
+    // ---- torrents only
+    /// bytes sent to other peers
+    pub uploaded: u64,
+    /// bytes per second sent to other peers
+    pub up_speed: f64,
+    /// peers connected right now / peers seen
+    pub peers: u32,
+    pub seen: u32,
+    /// still comparing the files on the disk with what is missing
+    pub checking: bool,
 }
 
 impl DownloadView {
     pub fn referer(&self) -> &str {
         self.headers.referer.as_deref().unwrap_or("")
+    }
+    /// Is this a torrent that is sending data to other peers right now?
+    pub fn seeding(&self) -> bool {
+        self.kind == DownloadKind::Torrent && self.status == Status::Completed && self.up_speed > 1.0
     }
     pub fn progress(&self) -> f32 {
         if self.status == Status::Completed {

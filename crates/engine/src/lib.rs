@@ -26,6 +26,7 @@ pub mod segments;
 pub mod selfupdate;
 pub mod store;
 pub mod system;
+pub mod torrent;
 pub mod tools;
 pub mod ytdlp;
 

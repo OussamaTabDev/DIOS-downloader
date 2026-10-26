@@ -19,6 +19,9 @@ msgstr "فتح باستخدام…"
 msgid "Open folder"
 msgstr "فتح المجلد"
 
+msgid "Torrent contents…"
+msgstr "محتويات التورنت…"
+
 msgid "Resume download"
 msgstr "استئناف التحميل"
 
@@ -127,6 +130,15 @@ msgstr "إضافة تحميل جديد…"
 msgid "Add batch download…"
 msgstr "إضافة مجموعة تحميلات…"
 
+msgid "Add torrent file…"
+msgstr "إضافة ملف تورنت…"
+
+msgid "Add magnet link…"
+msgstr "إضافة رابط مغناطيسي…"
+
+msgid "Paste download link"
+msgstr "لصق رابط تنزيل"
+
 msgid "Add batch download from clipboard"
 msgstr "إضافة مجموعة تحميلات من الحافظة"
 
@@ -156,6 +168,9 @@ msgstr "من ملف نصي…"
 
 msgid "Open download folder"
 msgstr "فتح مجلد التحميل"
+
+msgid "Hide to tray"
+msgstr "إخفاء في منطقة الإشعارات"
 
 msgid "Exit"
 msgstr "خروج"
@@ -226,6 +241,9 @@ msgstr "الخيارات…"
 msgid "View"
 msgstr "عرض"
 
+msgid "Filter the list…"
+msgstr "تصفية القائمة…"
+
 msgid "Show categories"
 msgstr "إظهار التصنيفات"
 
@@ -242,7 +260,7 @@ msgid "Last try date"
 msgstr "تاريخ آخر محاولة"
 
 msgid "Save to"
-msgstr "الحفظ في"
+msgstr "حفظ في"
 
 msgid "Parent web page"
 msgstr "صفحة الويب الأصلية"
@@ -319,6 +337,12 @@ msgstr "إضافة رابط"
 msgid "Add Batch"
 msgstr "إضافة مجموعة"
 
+msgid "Add Torrent"
+msgstr "إضافة تورنت"
+
+msgid "Paste"
+msgstr "لصق"
+
 msgid "Resume"
 msgstr "استئناف"
 
@@ -358,8 +382,8 @@ msgstr "الجامع"
 msgid "Playlist"
 msgstr "قائمة تشغيل"
 
-msgid "Filter the list…"
-msgstr "تصفية القائمة…"
+msgid "Hide"
+msgstr "إخفاء"
 
 msgid "Categories"
 msgstr "التصنيفات"
@@ -390,6 +414,9 @@ msgstr "لا يوجد ما يطابق “{}”."
 
 msgid "No downloads here.\nClick “Add URL”, copy a link, or download something in your browser."
 msgstr "لا توجد تحميلات هنا.\nاضغط “إضافة رابط”، أو انسخ رابطاً، أو حمّل أي شيء من المتصفح."
+
+msgid "Drop to add to DIOS Downloader"
+msgstr "أفلت للإضافة إلى DIOS Downloader"
 
 msgid "Download File Info"
 msgstr "معلومات ملف التحميل"
@@ -770,7 +797,7 @@ msgid "Open each file when it has finished downloading"
 msgstr "فتح كل ملف عند انتهاء تحميله"
 
 msgid "Start now"
-msgstr "ابدأ الآن"
+msgstr "البدء الآن"
 
 msgid "Apply"
 msgstr "تطبيق"
@@ -1162,6 +1189,21 @@ msgstr "ميجابايت كل"
 msgid "hours"
 msgstr "ساعة"
 
+msgid "Torrents (BitTorrent)"
+msgstr "التورنت (BitTorrent)"
+
+msgid "Share finished torrents (seeding)"
+msgstr "مشاركة التورنت المكتملة (البذر)"
+
+msgid "Download limit for all torrents (KB/s, 0 = off)"
+msgstr "حد التنزيل لكل التورنت (كيلوبايت/ث، 0 = بدون)"
+
+msgid "Upload limit for all torrents (KB/s, 0 = off)"
+msgstr "حد الإرسال لكل التورنت (كيلوبايت/ث، 0 = بدون)"
+
+msgid "Torrents connect to many computers; the limits apply to all of them together."
+msgstr "يتصل التورنت بأجهزة كثيرة؛ تنطبق الحدود عليها جميعاً معاً."
+
 msgid "No proxy"
 msgstr "بدون بروكسي"
 
@@ -1311,6 +1353,3 @@ msgstr "أعجبك DIOS Downloader؟ يمكنك دعم تطويره:"
 
 msgid "Support with PayPal"
 msgstr "ادعم عبر PayPal"
-
-msgid "Hide"
-msgstr "إخفاء"

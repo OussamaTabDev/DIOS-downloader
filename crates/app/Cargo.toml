@@ -50,10 +50,18 @@ tray-icon = "0.19"
 raw-window-handle = "0.6"
 windows-sys = { version = "0.59", features = [
     "Win32_Foundation",
+    "Win32_Graphics_Gdi",
     "Win32_Media_Audio",
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Shell",
     "Win32_UI_Shell_Common",
     "Win32_System_Com",
+    "Win32_System_Memory",
     "Win32_System_Ole",
+    "Win32_System_Registry",
 ] }
+
+# Linux/BSD: the icon next to the clock is a StatusNotifierItem (KDE, GNOME with
+# the AppIndicator extension, XFCE, Cinnamon, MATE, Budgie, ...) – pure Rust, no GTK
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+ksni = { version = "0.3", default-features = false, features = ["blocking", "async-io"] }

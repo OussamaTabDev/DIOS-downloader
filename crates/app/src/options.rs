@@ -129,6 +129,10 @@ fn fill(ui: &Ui, d: &SettingsDialog, s: &Settings) {
     d.set_limiter_on(s.speed_limit_on);
     d.set_speed_limit(s.speed_limit_kb.clamp(1, 1_000_000) as i32);
     d.set_limiter_startup(s.limiter_on_startup);
+    // Torrents
+    d.set_torrent_seed(s.torrent_seed);
+    d.set_torrent_dl(s.torrent_dl_limit_kb.min(1_000_000) as i32);
+    d.set_torrent_ul(s.torrent_ul_limit_kb.min(1_000_000) as i32);
     show_lists(ui, d);
 }
 
@@ -223,6 +227,10 @@ fn read(ui: &Ui, d: &SettingsDialog, mut s: Settings) -> Result<Settings, String
     s.speed_limit_on = d.get_limiter_on();
     s.speed_limit_kb = d.get_speed_limit().max(1) as u64;
     s.limiter_on_startup = d.get_limiter_startup();
+    // Torrents
+    s.torrent_seed = d.get_torrent_seed();
+    s.torrent_dl_limit_kb = d.get_torrent_dl().max(0) as u64;
+    s.torrent_ul_limit_kb = d.get_torrent_ul().max(0) as u64;
     Ok(s)
 }
 

@@ -16,7 +16,7 @@ thread_local! {
 
 /// The Win32 handle of a shown window.
 #[cfg(windows)]
-fn hwnd_of(w: &slint::Window) -> Option<isize> {
+pub(crate) fn hwnd_of(w: &slint::Window) -> Option<isize> {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     let handle = w.window_handle();
     let wh = handle.window_handle().ok()?;
@@ -24,6 +24,12 @@ fn hwnd_of(w: &slint::Window) -> Option<isize> {
         RawWindowHandle::Win32(raw) => Some(raw.hwnd.get()),
         _ => None,
     }
+}
+
+/// No window handles of this kind on other systems.
+#[cfg(not(windows))]
+pub(crate) fn hwnd_of(_w: &slint::Window) -> Option<isize> {
+    None
 }
 
 /// Make `w` `pct` % solid (50..=100). Called again every second for the main

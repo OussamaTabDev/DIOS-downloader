@@ -354,6 +354,13 @@ pub struct Settings {
     pub start_while_info: bool,
     /// "en", "ar", or "" = the language of Windows
     pub language: String,
+    // ---- torrents (BitTorrent)
+    /// keep sharing a finished torrent (sending pieces to others)
+    pub torrent_seed: bool,
+    /// KB/s for all torrents together (0 = unlimited)
+    pub torrent_dl_limit_kb: u64,
+    /// KB/s uploaded to other peers at most (0 = unlimited)
+    pub torrent_ul_limit_kb: u64,
 }
 
 impl Default for Settings {
@@ -440,6 +447,9 @@ impl Default for Settings {
             extension_prompted: false,
             start_while_info: true,
             language: String::new(),
+            torrent_seed: true,
+            torrent_dl_limit_kb: 0,
+            torrent_ul_limit_kb: 0,
         }
     }
 }

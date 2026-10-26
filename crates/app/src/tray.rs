@@ -1,7 +1,7 @@
-//! Icon next to the clock (Windows): the app keeps running there when its
-//! window is closed, like other download managers.
+//! Icon next to the clock (Windows) / in the system tray (Linux): the app keeps
+//! running there when its window is closed, like other download managers.
 
-#[cfg_attr(not(windows), allow(dead_code))]
+#[allow(dead_code)]
 pub enum TrayAction {
     Show,
     AddUrl,
@@ -99,7 +99,131 @@ mod imp {
     }
 }
 
-#[cfg(not(windows))]
+/// Linux / BSD: a StatusNotifierItem (the "app indicator" of KDE Plasma, GNOME with
+/// the AppIndicator extension, XFCE, Cinnamon, MATE, Budgie, ...). No GTK needed.
+/// When the desktop has no tray host, `Tray::new()` is `None` and the program
+/// behaves as if there were no icon (closing the window quits).
+#[cfg(all(unix, not(target_os = "macos")))]
+mod imp {
+    use super::TrayAction;
+    use ksni::blocking::{Handle, TrayMethods};
+    use ksni::menu::{CheckmarkItem, MenuItem, StandardItem};
+    use std::cell::Cell;
+    use std::sync::{Arc, Mutex};
+
+    type Queue = Arc<Mutex<Vec<TrayAction>>>;
+
+    struct DiosTray {
+        queue: Queue,
+        limiter: bool,
+        icon: Vec<ksni::Icon>,
+    }
+
+    impl DiosTray {
+        fn push(&self, a: TrayAction) {
+            if let Ok(mut q) = self.queue.lock() {
+                q.push(a);
+            }
+        }
+
+        fn entry(label: &str, make: fn() -> TrayAction) -> MenuItem<DiosTray> {
+            StandardItem {
+                label: label.into(),
+                activate: Box::new(move |t: &mut DiosTray| t.push(make())),
+                ..Default::default()
+            }
+            .into()
+        }
+    }
+
+    impl ksni::Tray for DiosTray {
+        fn id(&self) -> String {
+            "dios-downloader".into()
+        }
+        fn title(&self) -> String {
+            "DIOS Downloader".into()
+        }
+        fn icon_pixmap(&self) -> Vec<ksni::Icon> {
+            self.icon.clone()
+        }
+        fn tool_tip(&self) -> ksni::ToolTip {
+            ksni::ToolTip { title: "DIOS Downloader".into(), ..Default::default() }
+        }
+        // a click on the icon shows the window (the menu is on the right button)
+        fn activate(&mut self, _x: i32, _y: i32) {
+            self.push(TrayAction::Show);
+        }
+        fn secondary_activate(&mut self, _x: i32, _y: i32) {
+            self.push(TrayAction::Show);
+        }
+        fn menu(&self) -> Vec<MenuItem<Self>> {
+            vec![
+                Self::entry("Restore DIOS Downloader", || TrayAction::Show),
+                MenuItem::Separator,
+                Self::entry("Add new download…", || TrayAction::AddUrl),
+                Self::entry("Resume all downloads", || TrayAction::ResumeAll),
+                Self::entry("Stop all downloads", || TrayAction::StopAll),
+                MenuItem::Separator,
+                CheckmarkItem {
+                    label: "Speed Limiter".into(),
+                    checked: self.limiter,
+                    activate: Box::new(|t: &mut DiosTray| t.push(TrayAction::ToggleLimiter)),
+                    ..Default::default()
+                }
+                .into(),
+                Self::entry("Scheduler…", || TrayAction::Scheduler),
+                Self::entry("Options…", || TrayAction::Options),
+                MenuItem::Separator,
+                Self::entry("About", || TrayAction::About),
+                Self::entry("Exit", || TrayAction::Exit),
+            ]
+        }
+    }
+
+    pub struct Tray {
+        handle: Handle<DiosTray>,
+        queue: Queue,
+        limiter: Cell<bool>,
+    }
+
+    impl Tray {
+        pub fn new() -> Option<Tray> {
+            // tray32.rgba is RGBA; the StatusNotifierItem wants ARGB32 (network byte order)
+            let rgba = include_bytes!("../ui/tray32.rgba");
+            let mut argb = Vec::with_capacity(rgba.len());
+            for px in rgba.chunks_exact(4) {
+                argb.extend_from_slice(&[px[3], px[0], px[1], px[2]]);
+            }
+            let queue: Queue = Arc::new(Mutex::new(Vec::new()));
+            let tray = DiosTray {
+                queue: queue.clone(),
+                limiter: false,
+                icon: vec![ksni::Icon { width: 32, height: 32, data: argb }],
+            };
+            // Err = no session bus or no tray host on this desktop
+            let handle = tray.spawn().ok()?;
+            Some(Tray { handle, queue, limiter: Cell::new(false) })
+        }
+
+        /// Clicks since the last call.
+        pub fn poll(&self) -> Vec<TrayAction> {
+            match self.queue.lock() {
+                Ok(mut q) => std::mem::take(&mut *q),
+                Err(_) => Vec::new(),
+            }
+        }
+
+        /// Keep the check mark of "Speed Limiter" in step with the app.
+        pub fn set_limiter(&self, on: bool) {
+            if self.limiter.get() != on {
+                self.limiter.set(on);
+                let _ = self.handle.update(|t| t.limiter = on);
+            }
+        }
+    }
+}
+
+#[cfg(not(any(windows, all(unix, not(target_os = "macos")))))]
 mod imp {
     use super::TrayAction;
     pub struct Tray;

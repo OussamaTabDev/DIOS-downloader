@@ -8,5 +8,6 @@ Exec=DIOSDownloader
 Icon=dios-downloader
 Terminal=false
 Categories=Network;FileTransfer;
-Keywords=download;manager;DIOS;
+Keywords=download;manager;DIOS;video;
+StartupNotify=true
 StartupWMClass=DIOSDownloader

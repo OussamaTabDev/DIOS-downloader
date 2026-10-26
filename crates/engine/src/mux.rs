@@ -16,10 +16,12 @@ pub fn find_tool(name: &str) -> Option<PathBuf> {
     if let Ok(me) = std::env::current_exe() {
         let local = me.with_file_name(&exe_name);
         if local.exists() {
+            crate::tools::ensure_executable(&local);
             return Some(local);
         }
         let in_folder = me.with_file_name(name).join("bin").join(&exe_name);
         if in_folder.exists() {
+            crate::tools::ensure_executable(&in_folder);
             return Some(in_folder);
         }
     }

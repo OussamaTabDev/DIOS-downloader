@@ -189,7 +189,9 @@ component PairList inherits Rectangle {
 export component ColumnsDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("Columns");
     preferred-width: 320px;
     in-out property <Cols> cols;
@@ -324,7 +326,9 @@ export component ColumnsDialog inherits ThemedWindow {
 export component CategoryDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: root.is-new ? @tr("Add category") : @tr("Category properties");
     preferred-width: 520px;
     in property <bool> is-new;
@@ -422,7 +426,9 @@ export component CategoryDialog inherits ThemedWindow {
 export component FindDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("Find file");
     preferred-width: 440px;
     in-out property <string> text;
@@ -505,7 +511,9 @@ export component FindDialog inherits ThemedWindow {
 export component PropertiesDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("File Properties – {}", root.file-name);
     preferred-width: 600px;
     in property <string> file-name;
@@ -712,7 +720,9 @@ export component PropertiesDialog inherits ThemedWindow {
 export component DuplicateDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("Duplicate download link");
     preferred-width: 520px;
     in property <string> file-name;
@@ -845,7 +855,9 @@ export component CountdownDialog inherits ThemedWindow {
 export component SchedulerDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("Scheduler");
     preferred-width: 820px;
     preferred-height: 560px;
@@ -1269,7 +1281,9 @@ export component SchedulerDialog inherits ThemedWindow {
 export component GrabberDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: root.links-mode ? @tr("Download all links") : @tr("Site Grabber");
     preferred-width: 860px;
     preferred-height: 600px;
@@ -1600,7 +1614,9 @@ export component GrabberDialog inherits ThemedWindow {
 export component TipDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("Tip of the day");
     preferred-width: 480px;
     in property <string> tip;
@@ -1679,7 +1695,9 @@ export component TipDialog inherits ThemedWindow {
 export component RefreshDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("Refresh download address");
     preferred-width: 520px;
     in property <string> file-name;
@@ -1785,7 +1803,9 @@ component SoundRow inherits HorizontalLayout {
 export component SettingsDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("DIOS Downloader – Options");
     preferred-width: 820px;
     preferred-height: 600px;
@@ -1876,6 +1896,10 @@ export component SettingsDialog inherits ThemedWindow {
     in-out property <bool> limiter-on;
     in-out property <int> speed-limit;
     in-out property <bool> limiter-startup;
+    // Torrents (BitTorrent)
+    in-out property <bool> torrent-seed: true;
+    in-out property <int> torrent-dl;
+    in-out property <int> torrent-ul;
     in property <string> message;
 
     callback browse(string);
@@ -2531,6 +2555,54 @@ export component SettingsDialog inherits ThemedWindow {
                     Hint {
                         text: root.quota-used;
                     }
+                    Section {
+                        text: @tr("Torrents (BitTorrent)");
+                    }
+                    HorizontalLayout {
+                        spacing: 6px;
+                        CheckBox {
+                            text: @tr("Share finished torrents (seeding)");
+                            checked <=> root.torrent-seed;
+                        }
+                        Rectangle {
+                            horizontal-stretch: 1;
+                        }
+                    }
+                    HorizontalLayout {
+                        spacing: 6px;
+                        Label {
+                            text: @tr("Download limit for all torrents (KB/s, 0 = off)");
+                        }
+                        SpinBox {
+                            width: 110px;
+                            minimum: 0;
+                            maximum: 1000000;
+                            step-size: 50;
+                            value <=> root.torrent-dl;
+                        }
+                        Rectangle {
+                            horizontal-stretch: 1;
+                        }
+                    }
+                    HorizontalLayout {
+                        spacing: 6px;
+                        Label {
+                            text: @tr("Upload limit for all torrents (KB/s, 0 = off)");
+                        }
+                        SpinBox {
+                            width: 110px;
+                            minimum: 0;
+                            maximum: 1000000;
+                            step-size: 50;
+                            value <=> root.torrent-ul;
+                        }
+                        Rectangle {
+                            horizontal-stretch: 1;
+                        }
+                    }
+                    Hint {
+                        text: @tr("Torrents connect to many computers; the limits apply to all of them together.");
+                    }
                 }
 
                 // ---------------- Proxy
@@ -2806,7 +2878,9 @@ export component SettingsDialog inherits ThemedWindow {
 export component PlaylistDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("Download a playlist");
     preferred-width: 780px;
     preferred-height: 600px;
@@ -3140,9 +3214,12 @@ component BrowserCard inherits Rectangle {
 export component BrowserDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("Add DIOS Downloader to your browser");
-    preferred-width: 880px;
+    preferred-width: 760px;
+    min-width: 360px;
     in property <[BrowserRow]> browsers;
     in property <string> steps;
     in property <string> folder;
@@ -3159,10 +3236,15 @@ export component BrowserDialog inherits ThemedWindow {
             font-weight: 700;
             color: Theme.text;
         }
-        HorizontalLayout {
-            spacing: 12px;
+        grid := Rectangle {
+            // as many cards per row as fit; more rows when there are more browsers
+            property <int> cols: max(1, min(root.browsers.length, floor((self.width + 12px) / 168px)));
+            property <int> rows: ceil(root.browsers.length / self.cols);
+            height: self.rows * 162px - 12px;
             for b[i] in root.browsers: BrowserCard {
-                horizontal-stretch: 1;
+                x: Math.mod(i, grid.cols) * ((grid.width - (grid.cols - 1) * 12px) / grid.cols + 12px);
+                y: floor(i / grid.cols) * 162px;
+                width: (grid.width - (grid.cols - 1) * 12px) / grid.cols;
                 data: b;
                 add => {
                     root.add(i);
@@ -3225,7 +3307,9 @@ export component BrowserDialog inherits ThemedWindow {
 export component AboutDialog inherits ThemedWindow {
     // set for a moment so the window comes in front of the browser
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("About DIOS Downloader");
     preferred-width: 420px;
     in property <string> version;
@@ -3316,7 +3400,9 @@ export component AboutDialog inherits ThemedWindow {
 export component UpdateDialog inherits ThemedWindow {
     // set for a moment so the window comes in front
     in property <bool> front;
-    always-on-top: root.front;
+    always-on-top: root.pinned || root.front;
+    // dialogs stay in front of the main window (the download windows are free)
+    in-out property <bool> pinned: true;
     title: @tr("Check for updates");
     preferred-width: 460px;
     // 0 checking, 1 newest already, 2 downloading, 3 installing, 4 problem

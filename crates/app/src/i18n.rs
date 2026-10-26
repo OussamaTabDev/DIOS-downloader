@@ -269,6 +269,10 @@ const AR: &[(&str, &str)] = &[
     ("{} of {} videos checked", "{} من {} فيديو محدد"),
     ("{} videos", "{} فيديو"),
     ("Click to add", "اضغط للإضافة"),
+    ("Other browser", "متصفح آخر"),
+    ("Any other browser: copy the folder", "أي متصفح آخر: انسخ المجلد"),
+    ("No browser was found on this computer automatically. Click \"Other browser\" and follow the steps.", "لم يُعثر على أي متصفح تلقائياً. اضغط «متصفح آخر» واتبع الخطوات."),
+    ("1. Open your browser's extensions page and turn on \"Developer mode\".\n2. Click \"Load unpacked\" (Firefox: \"Load Temporary Add-on…\").\n3. Paste the folder path (Ctrl+V – it is already copied) and choose it.\n\nFirefox-based browsers use the \"extension-firefox\" folder instead.", "1. افتح صفحة الإضافات في متصفحك وفعّل «وضع المطوّر».\n2. اضغط «تحميل إضافة غير مضغوطة» (فايرفوكس: «تحميل إضافة مؤقتة…»).\n3. الصق مسار المجلد (Ctrl+V – تم نسخه بالفعل) واختره.\n\nالمتصفحات المبنية على فايرفوكس تستخدم المجلد «extension-firefox»."),
     ("DIOS Downloader – download manager", "DIOS Downloader – برنامج تحميل"),
     ("Click to add from the store", "اضغط للإضافة من المتجر"),
     ("{} is not installed on this computer.", "{} غير مثبّت على هذا الكمبيوتر."),
@@ -499,6 +503,38 @@ const AR: &[(&str, &str)] = &[
     (
         "More protection against harmful web pages and links.",
         "حماية أكبر من صفحات الويب والروابط الضارة.",
+    ),
+    // torrents
+    ("Checking…", "جارٍ التحقق…"),
+    ("Checking existing files…", "جارٍ التحقق من الملفات الموجودة…"),
+    ("Downloading from peers…", "جارٍ التنزيل من المشاركين…"),
+    ("Choose a torrent file, or paste a magnet link.", "اختر ملف تورنت أو الصق رابط مغناطيسي."),
+    ("Fetching the torrent info…", "جارٍ جلب معلومات التورنت…"),
+    ("Choose a torrent file", "اختر ملف تورنت"),
+    ("Choose a folder to save the torrent into.", "اختر مجلداً لحفظ التورنت فيه."),
+    ("This torrent is already in the download list. Add it again?", "هذا التورنت موجود بالفعل في قائمة التحميل. هل تريد إضافته مرة أخرى؟"),
+    ("{}: torrent · {} files", "{}: تورنت · {} ملف"),
+    ("{} connected  ·  {} seen", "{} متصل  ·  {} ظهر"),
+    ("{} of {} files  ·  {} of {}", "{} من {} ملفات  ·  {} من {}"),
+    ("{} files  ·  {}", "{} ملف  ·  {}"),
+    // paste & drop (Ctrl+V, the Paste button, drops on the window)
+    ("The clipboard is not available", "الحافظة غير متاحة"),
+    ("No download link found in the clipboard", "لم يُعثر على رابط تنزيل في الحافظة"),
+    ("This link is already in the download list", "هذا الرابط موجود بالفعل في قائمة التحميل"),
+    ("This link is already in the list — it continues now", "هذا الرابط موجود بالفعل في القائمة — سيُستأنف الآن"),
+    ("Download added from the clipboard: {}", "تمت إضافة تنزيل من الحافظة: {}"),
+    ("Link pasted — press Start to download it", "تم لصق الرابط — اضغط «ابدأ» لتنزيله"),
+    ("{} links pasted — pick the folder and start them", "تم لصق {} رابطًا — اختر المجلد وابدأ تنزيلها"),
+    ("Only .torrent files can be dropped on the window", "يمكن إفلات ملفات .torrent فقط على النافذة"),
+    ("{} torrent files dropped — the first one opens", "تم إفلات {} ملف تورنت — سيُفتح الأول"),
+    // new tips
+    (
+        "Press Ctrl+V in the download list to download what the clipboard holds — a link, a magnet or a .torrent file.",
+        "اضغط Ctrl+V في قائمة التحميل لتنزيل ما في الحافظة — رابطاً أو رابطاً مغناطيسياً أو ملف تورنت.",
+    ),
+    (
+        "Drag a .torrent file (or a link) from Explorer and drop it on the main window to add it.",
+        "اسحب ملف تورنت (أو رابطاً) من مستكشف الملفات وأفلته على النافذة الرئيسية لإضافته.",
     ),
 ];
 

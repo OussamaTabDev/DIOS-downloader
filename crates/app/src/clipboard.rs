@@ -1,6 +1,7 @@
 //! Clipboard monitor: when the user copies a link to a downloadable file,
 //! offer to download it (like classic download managers).
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 const EXTENSIONS: &[&str] = &[
@@ -9,6 +10,25 @@ const EXTENSIONS: &[&str] = &[
     "aac", "m4a", "ogg", "pdf", "epub", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "m3u8", "bin",
     "img", "torrent",
 ];
+
+/// When the program itself last put something in the clipboard (ms tick):
+/// the "Copy URL" menu, the SHA-256 window... The monitor keeps quiet for a
+/// moment after that, or it would offer the user their own copy back.
+static SELF_COPY_MS: AtomicU64 = AtomicU64::new(0);
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+}
+
+/// Something was copied by the program itself: don't offer it back.
+pub fn mark_self_copy() {
+    SELF_COPY_MS.store(now_ms(), Ordering::Relaxed);
+}
+
+fn self_copy_recent() -> bool {
+    let at = SELF_COPY_MS.load(Ordering::Relaxed);
+    at != 0 && now_ms().saturating_sub(at) < 3000
+}
 
 /// Returns the URL when `text` is a single http(s) link to a known file type.
 pub fn downloadable_url(text: &str) -> Option<String> {
@@ -29,8 +49,19 @@ pub fn downloadable_url(text: &str) -> Option<String> {
     }
 }
 
-/// Polls the clipboard once a second on its own thread.
-pub fn spawn(enabled: impl Fn() -> bool + Send + 'static, on_url: impl Fn(String) + Send + 'static) {
+/// What the monitor offers when the user copies something anywhere:
+/// a direct file link, or a magnet link (a torrent in waiting).
+pub fn monitor_pickup(text: &str) -> Option<String> {
+    if let Some(u) = downloadable_url(text) {
+        return Some(u);
+    }
+    let t = text.trim();
+    (t.starts_with("magnet:") && t.len() <= 4096 && !t.contains(char::is_whitespace)).then(|| t.to_string())
+}
+
+/// Polls the clipboard once a second on its own thread. `on_pickup` gets a
+/// link or a magnet the user copied somewhere else.
+pub fn spawn(enabled: impl Fn() -> bool + Send + 'static, on_pickup: impl Fn(String) + Send + 'static) {
     std::thread::Builder::new()
         .name("dios-clipboard".into())
         .spawn(move || {
@@ -44,11 +75,11 @@ pub fn spawn(enabled: impl Fn() -> bool + Send + 'static, on_url: impl Fn(String
                     continue;
                 }
                 last = text.clone();
-                if !enabled() {
+                if !enabled() || self_copy_recent() {
                     continue;
                 }
-                if let Some(u) = downloadable_url(&text) {
-                    on_url(u);
+                if let Some(u) = monitor_pickup(&text) {
+                    on_pickup(u);
                 }
             }
         })

@@ -52,13 +52,22 @@
 
 ### لينكس
 
-بِنِ البرنامج وحزّمه بأمر واحد:
+جاهزة للتنزيل من **GitHub Releases** في صفحة المشروع (يبنيها GitHub Actions وينشرها مع كل إصدار جديد، انظر الأسفل):
+
+| الحزمة | التثبيت |
+|---|---|
+| `.deb` (ديبيان/أوبونتو/منت) | `sudo apt install ./dios-downloader_*_amd64.deb` |
+| `.rpm` (فيدورا/openSUSE) | `sudo dnf install ./dios-downloader-*.x86_64.rpm` |
+| `.AppImage` (أي توزيعة) | `chmod +x DIOSDownloader-*.x86_64.AppImage && ./DIOSDownloader-*.x86_64.AppImage` |
+| `.tar.gz` (مجلد محمول) | فُكّ الضغط ثم شغّل `install.sh` كما في الأسفل |
+
+وتُنتج كل الحزم السابقة محليًا بأمر واحد:
 
 ```bash
 ./build-linux.sh
 ```
 
-ينتج السكربت حزمة `dist/DIOSDownloader-<الإصدار>-linux-x64.tar.gz` فيها البرنامج وإضافات المتصفح. للتثبيت منها:
+ينتج السكربت حزمة `dist/DIOSDownloader-<الإصدار>-linux-x64.tar.gz` فيها البرنامج وإضافات المتصفح، ثم يحاول إضافة `dist/dios-downloader_<الإصدار>_amd64.deb` و `dist/dios-downloader-<الإصدار>-1.x86_64.rpm` و `dist/DIOSDownloader-<الإصدار>-x86_64.AppImage` عندما تكون أدوات الحزم متوفرة (dpkg-deb و rpmbuild و appimagetool، وهذا ما يفعله سير العمل على GitHub). للتثبيت من المجلد المضغوط:
 
 ```bash
 tar -xzf DIOSDownloader-*-linux-x64.tar.gz
@@ -69,7 +78,17 @@ cd DIOSDownloader
 يمكن أيضًا تشغيل البرنامج مباشرة من مجلد الحزمة: `./DIOSDownloader`.
 تحتاج المكتبات القياسية الموجودة مسبقًا في معظم توزيعات سطح المكتب (libxkbcommon و libfontconfig و libwayland أو مكتبات X11، و xdg-desktop-portal لنوافذ اختيار الملفات).
 
-> ملاحظة: على لينكس يتولّد أداتا yt-dlp و FFmpeg تلقائيًا عند أول تشغيل (من إصداراتهما على GitHub مع تحقق SHA-256)، ولا يتوفر بعد أيقونة بجوار الساعة، والتشغيل مع بدء الجلسة يُدار عبر ملف `.desktop` في مجلد autostart.
+> ملاحظة: على لينكس يتولّد أداتا yt-dlp و FFmpeg تلقائيًا عند أول تشغيل (من إصداراتهما على GitHub مع تحقق SHA-256)، ولا يتوفر بعد أيقونة بجوار الساعة، والتشغيل مع بدء الجلسة يُدار عبر ملف `.desktop` في مجلد autostart. التحديث التلقائي من داخل البرنامج يعمل على ويندوز؛ وعلى لينكس يُثبَّت الإصدار الجديد من مدير الحزم أو بنزله من Releases.
+
+### بناء الإصدارات ونشرها تلقائيًا (GitHub Actions)
+
+يعمل `.github/workflows/build.yml` على كل تعديل فيبني **ويندوز ولينكس** ويحفظ النواتج كمرفقات للتشغيلة، وعند دفع تعديل إلى فرع `main` تحوي رسالته الكلمة **`[release]`** ينشر **GitHub Release** بالاسم `v<الإصدار>` (من `Cargo.toml`) وفيه:
+
+1. **`DIOSDownloader-Setup.exe`** ومعه `version.json` (موقّع بمفتاح Ed25519 عبر السر `UPDATE_SIGNING_KEY`) لمحدّث البرنامج، وإضافة Firefox الموقّعة من Mozilla عند تعريف مفاتيح AMO.
+2. حزم **لينكس الأربع**: `tar.gz` و `.deb` و `.rpm` و `.AppImage` — تُبنى على ubuntu-22.04 (glibc أقدم فيشتغل الناتج على ديبيان 12 وأوبونتو 22.04 وما بعدهما).
+3. ملف **`SHA256SUMS`** فيه بصمة كل ملف، وتُحذف الإصدارات الأقدم ويبقى الإصدار الأخير وحده.
+
+ويعمل `.github/workflows/ci.yml` على كل تعديل أو طلب دمج فيشغّل اختبارات المشروع على لينكس (وعلى ويندوز ضمن سير العمل الأول).
 
 ---
 
@@ -121,8 +140,10 @@ cd DIOSDownloader
 │  └─ lang/            ترجمات الواجهة
 ├─ extension/          إضافة المتصفح
 ├─ assets/             الشعار وملف .desktop
+├─ packaging/linux/    سكربتات حزم لينكس: .deb و .rpm و .AppImage
+├─ .github/workflows/  البناء والاختبار ونشر الإصدارات على GitHub
 ├─ BUILD.bat           بناء ويندوز
-└─ build-linux.sh      بناء لينكس وحزمته
+└─ build-linux.sh      بناء لينكس وحزمه
 ```
 
 ---
