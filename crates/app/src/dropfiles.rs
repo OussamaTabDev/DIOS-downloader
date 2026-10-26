@@ -284,13 +284,13 @@ mod imp {
     }
 
     /// Remember what to do with a drop (called once, before the window shows).
-    pub(super) fn set_handler(f: std::rc::Rc<dyn Fn(DropAction)>) {
+    pub(crate) fn set_handler(f: std::rc::Rc<dyn Fn(DropAction)>) {
         HANDLER.with(|h| *h.borrow_mut() = Some(f));
     }
 
     /// Accept drops on the main window (called when it is shown; later calls
     /// change nothing).
-    pub(super) fn register_now() {
+    pub(crate) fn register_now() {
         if DONE.with(|d| d.get()) {
             return;
         }
@@ -310,13 +310,13 @@ mod imp {
     }
 
     /// Remember the window's handle (the caller knows it from the shown window).
-    pub(super) fn set_hwnd(hwnd: isize) {
+    pub(crate) fn set_hwnd(hwnd: isize) {
         HWND.with(|h| h.set(hwnd));
     }
 }
 
 #[cfg(windows)]
-pub(crate) use imp::{register_now as register_main, set_handler};
+pub(crate) use imp::{register_now as register_main, set_handler, set_hwnd};
 
 #[cfg(not(windows))]
 mod imp {
