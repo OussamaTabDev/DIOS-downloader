@@ -4,3 +4,4 @@ build-cache/
 signing/
 __pycache__/
 dist/
+UPDATE_SIGNING_KEY.PRIVATE-do-not-commit.txt
