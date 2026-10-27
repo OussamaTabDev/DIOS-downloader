@@ -458,7 +458,7 @@ pub(crate) fn export_list(mgr: &Arc<Manager>, kind: &str) {
             .map(|v| Ef2Item {
                 url: v.parent_page.clone().filter(|_| v.kind == DownloadKind::Dash).unwrap_or(v.url.clone()),
                 referer: v.headers.referer.clone(),
-                cookies: v.headers.cookies.clone(),
+                cookies: mgr.headers_of(v.id).and_then(|h| h.cookies),
                 user_agent: v.headers.user_agent.clone(),
                 file_name: Some(v.file_name.clone()),
                 description: v.description.clone(),
@@ -721,7 +721,7 @@ pub(crate) fn wire(ui: &Ui) {
                     return;
                 }
                 if let Some(id) = ui.refresh_id.get() {
-                    refresh_received(&ui, id, &url, ui.ctx.mgr.get(id).map(|v| v.headers).unwrap_or_default());
+                    refresh_received(&ui, id, &url, ui.ctx.mgr.headers_of(id).unwrap_or_default());
                 }
             });
         }

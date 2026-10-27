@@ -103,6 +103,8 @@ pub enum ApiEvent {
     Add(AddRequest),
     Links(LinksRequest),
     Show,
+    /// a magnet link or the path of a .torrent file, from a second start of the program
+    Torrent(String),
 }
 
 /// What the extension needs to know from Options (file types to take,
@@ -131,12 +133,21 @@ pub fn bind(port: u16) -> Result<Server, String> {
 }
 
 /// Another DIOS Downloader is already running on this port: ask it to show itself.
-pub fn notify_existing(port: u16) -> bool {
+/// Tell the running instance to come to the front, and to open `torrent` (a magnet link or
+/// the path of a .torrent file) when the system started us with one: "Open with" while the
+/// program is running must not lose the file.
+pub fn notify_existing(port: u16, torrent: Option<&str>) -> bool {
     let Ok(mut s) = TcpStream::connect_timeout(&([127, 0, 0, 1], port).into(), Duration::from_millis(800)) else {
         return false;
     };
     let _ = s.set_read_timeout(Some(Duration::from_secs(2)));
-    let req = "POST /show HTTP/1.1\r\nHost: 127.0.0.1\r\nX-DIOS: 1\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+    let req = match torrent {
+        Some(t) => format!(
+            "POST /torrent HTTP/1.1\r\nHost: 127.0.0.1\r\nX-DIOS: 1\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{t}",
+            t.len()
+        ),
+        None => "POST /show HTTP/1.1\r\nHost: 127.0.0.1\r\nX-DIOS: 1\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_string(),
+    };
     if s.write_all(req.as_bytes()).is_err() {
         return false;
     }
@@ -259,6 +270,21 @@ fn handle(mut req: Request, config: &impl Fn() -> String, on_event: &impl Fn(Api
         (Method::Post, "/show") => {
             on_event(ApiEvent::Show);
             reply(req, 200, r#"{"ok":true,"app":"DIOS"}"#)
+        }
+        (Method::Post, "/torrent") => {
+            let mut body = String::new();
+            if req.as_reader().take(8192).read_to_string(&mut body).is_err() {
+                return reply(req, 400, r#"{"error":"bad body"}"#);
+            }
+            let text = body.trim().to_string();
+            let lower = text.to_ascii_lowercase();
+            // only what opens the "Add torrent" window: a magnet link or a .torrent file
+            if lower.starts_with("magnet:") || lower.ends_with(".torrent") {
+                on_event(ApiEvent::Torrent(text));
+                reply(req, 200, r#"{"ok":true,"app":"DIOS"}"#)
+            } else {
+                reply(req, 400, r#"{"error":"not a torrent"}"#)
+            }
         }
         (Method::Post, "/add") => {
             let mut body = String::new();

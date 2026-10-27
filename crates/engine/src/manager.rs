@@ -194,6 +194,18 @@ impl Manager {
         self.settings.read().unwrap().clone()
     }
 
+    /// Read one value of the settings without copying all of them (the timers ask
+    /// 10 times a second).
+    pub fn peek<R>(&self, f: impl FnOnce(&Settings) -> R) -> R {
+        f(&self.settings.read().unwrap())
+    }
+
+    /// The full request headers of a download (cookies included); a download's view
+    /// leaves the cookies out.
+    pub fn headers_of(&self, id: DownloadId) -> Option<RequestHeaders> {
+        self.inner.lock().unwrap().entries.get(&id).map(|e| e.rec.headers.clone())
+    }
+
     pub fn set_settings(self: &Arc<Self>, s: Settings) -> anyhow::Result<()> {
         self.shared.limiter.set_rate(s.effective_limit());
         let proxy = ProxyConfig::from_settings(&s);
@@ -434,12 +446,13 @@ impl Manager {
                 work_dir,
                 info_hash: req.meta.info_hash,
                 total_size: wanted,
-                file_list: req
-                    .meta
-                    .files
-                    .iter()
-                    .map(|f| TorrentFileSpec { path: f.path.clone(), size: f.size })
-                    .collect(),
+                file_list: Arc::new(
+                    req.meta
+                        .files
+                        .iter()
+                        .map(|f| TorrentFileSpec { path: f.path.clone(), size: f.size })
+                        .collect(),
+                ),
             }),
         };
         inner.entries.insert(
@@ -2075,7 +2088,15 @@ fn make_view(e: &Entry) -> DownloadView {
         on_complete: e.rec.on_complete,
         added_at: e.rec.added_at,
         last_try: e.rec.last_try,
-        headers: e.rec.headers.clone(),
+        // the cookies (kilobytes, copied for every download 4 times a second) stay out of
+        // the view: Manager::headers_of(id) has them for the few places that need them
+        headers: RequestHeaders {
+            referer: e.rec.headers.referer.clone(),
+            cookies: None,
+            user_agent: e.rec.headers.user_agent.clone(),
+            extra: e.rec.headers.extra.clone(),
+            auth: e.rec.headers.auth.clone(),
+        },
         parent_page: e.rec.source_page.clone().or_else(|| e.rec.headers.referer.clone()),
         torrent: e.rec.torrent.clone(),
         uploaded: e.progress.uploaded.load(Ordering::Relaxed),

@@ -70,7 +70,7 @@ ls "$STAGE"/dios-downloader-firefox-*.xpi >/dev/null 2>&1 && \
     cp "$STAGE"/dios-downloader-firefox-*.xpi "$PAYLOAD/opt/DIOSDownloader/" || true
 ln -s ../../opt/DIOSDownloader/DIOSDownloader "$PAYLOAD/usr/bin/DIOSDownloader"
 if [ -f "$STAGE/dios-downloader.desktop" ]; then
-    sed 's|^Exec=.*|Exec=/usr/bin/DIOSDownloader|' "$STAGE/dios-downloader.desktop" \
+    sed 's|^Exec=.*|Exec=/usr/bin/DIOSDownloader %U|' "$STAGE/dios-downloader.desktop" \
         > "$PAYLOAD/usr/share/applications/dios-downloader.desktop"
 fi
 [ -f "$STAGE/dios-downloader.png" ] && cp "$STAGE/dios-downloader.png" \

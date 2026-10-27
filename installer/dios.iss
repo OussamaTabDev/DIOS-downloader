@@ -55,6 +55,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
 Name: "autostart"; Description: "Start DIOS Downloader when Windows starts (recommended)"; GroupDescription: "Startup:"
+Name: "torrentassoc"; Description: "Open .torrent files and magnet links with DIOS Downloader"; GroupDescription: "File associations:"
 
 [Files]
 Source: "{#Stage}\{#MyAppExe}"; DestDir: "{app}"; Flags: ignoreversion
@@ -86,6 +87,12 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: deskto
 Root: HKCU; Subkey: "Software\DIOS\DIOSDownloader"; ValueType: string; ValueName: "Installed"; ValueData: "1"; Flags: uninsdeletekey
 ; start in the background (next to the clock) when the user signs in
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "DIOSDownloader"; ValueData: """{app}\{#MyAppExe}"" --background"; Flags: uninsdeletevalue; Tasks: autostart
+Root: HKCU; Subkey: "Software\Classes\.torrent"; ValueType: string; ValueData: "DIOSDownloader.torrent"; Flags: uninsdeletevalue; Tasks: torrentassoc
+Root: HKCU; Subkey: "Software\Classes\DIOSDownloader.torrent"; ValueType: string; ValueData: "BitTorrent file"; Flags: uninsdeletekey; Tasks: torrentassoc
+Root: HKCU; Subkey: "Software\Classes\DIOSDownloader.torrent\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExe}"" ""%1"""; Tasks: torrentassoc
+Root: HKCU; Subkey: "Software\Classes\magnet"; ValueType: string; ValueData: "URL:Magnet Link"; Flags: uninsdeletekey; Tasks: torrentassoc
+Root: HKCU; Subkey: "Software\Classes\magnet"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Tasks: torrentassoc
+Root: HKCU; Subkey: "Software\Classes\magnet\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExe}"" ""%1"""; Tasks: torrentassoc
 
 [Run]
 Filename: "{app}\{#MyAppExe}"; Description: "Open DIOS Downloader now"; Flags: nowait postinstall skipifsilent

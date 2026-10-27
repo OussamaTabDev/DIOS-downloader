@@ -163,8 +163,9 @@ pub struct TorrentEntry {
     /// bytes of the chosen files
     pub total_size: u64,
     /// every file of the torrent with its size (for the file windows)
+    /// shared: every list refresh copies the entry, and a torrent can have thousands of files
     #[serde(default)]
-    pub file_list: Vec<TorrentFileSpec>,
+    pub file_list: std::sync::Arc<Vec<TorrentFileSpec>>,
 }
 
 /// A request to add a torrent download (from the "Add torrent" window).

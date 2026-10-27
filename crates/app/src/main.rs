@@ -168,11 +168,15 @@ fn main() -> anyhow::Result<()> {
     let data_dir = default_data_dir();
     let port = Settings::load(&data_dir.join("settings.json")).browser_port;
 
+    // `DIOSDownloader magnet:?...` / `DIOSDownloader file.torrent` (what the system runs for
+    // these links and files)
+    let torrent_arg = torrent_launch_arg();
+
     // One instance only: if the port is taken by us, bring that one to front.
     let server = match api::bind(port) {
         Ok(s) => Some(s),
         Err(_) => {
-            if api::notify_existing(port) {
+            if api::notify_existing(port, torrent_arg.as_deref()) {
                 return Ok(());
             }
             None
@@ -346,7 +350,8 @@ fn main() -> anyhow::Result<()> {
         });
         let ui2 = ui.clone();
         let api_timer = Timer::default();
-        api_timer.start(TimerMode::Repeated, Duration::from_millis(50), move || {
+        // (the API thread also wakes the loop at once; this is only the safety net)
+        api_timer.start(TimerMode::Repeated, Duration::from_millis(100), move || {
             if modal_open() {
                 return; // the requests wait until the message box is closed
             }
@@ -378,8 +383,15 @@ fn main() -> anyhow::Result<()> {
     {
         let ui = ui.clone();
         let pickups = pickups.clone();
+        let mut tick: u32 = 0;
         fast_timer.start(TimerMode::Repeated, Duration::from_millis(100), move || {
             if modal_open() {
+                return;
+            }
+            // nothing on the screen moves (the program sits next to the clock): look three
+            // times a second instead of ten - tray clicks and the clipboard don't need more
+            tick = tick.wrapping_add(1);
+            if tick % 3 != 0 && !ui_active(&ui) {
                 return;
             }
             update_progress_windows(&ui);
@@ -390,7 +402,7 @@ fn main() -> anyhow::Result<()> {
                 clipboard_pickup(&ui, pickup);
             }
             if let Some(t) = &tray {
-                t.set_limiter(ui.ctx.mgr.settings().speed_limit_on);
+                t.set_limiter(ui.ctx.mgr.peek(|s| s.speed_limit_on));
                 for action in t.poll() {
                     tray_action(&ui, action);
                 }
@@ -405,7 +417,10 @@ fn main() -> anyhow::Result<()> {
             if modal_open() {
                 return;
             }
-            refresh(&ui);
+            // a window that is hidden or minimized shows nothing: no list to build
+            if main_shown(&ui) {
+                refresh(&ui);
+            }
             scheduler::poll(&ui);
 
             // the download behind an open "Download File Info" says nothing
@@ -435,7 +450,7 @@ fn main() -> anyhow::Result<()> {
             // the window may have been shown again from the icon next to the clock
             if let Some(m) = ui.ctx.main.upgrade() {
                 if m.window().is_visible() {
-                    winfx::set_opacity(m.window(), ui.ctx.mgr.settings().opacity);
+                    winfx::set_opacity(m.window(), ui.ctx.mgr.peek(|s| s.opacity));
                 }
             }
         });
@@ -446,20 +461,8 @@ fn main() -> anyhow::Result<()> {
     // browser, the command line): the "Add torrent" window comes up
     // (not when the app starts quietly next to the clock)
     if !(background && has_tray) {
-        let ui = ui.clone();
-        let mut opened = false;
-        for arg in std::env::args().skip(1) {
-            let a = arg.trim();
-            if opened {
-                break;
-            }
-            if a.starts_with("magnet:") {
-                torrent::open_add(&ui, Some(dios_engine::TorrentSource::Magnet(a.to_string())));
-                opened = true;
-            } else if a.to_ascii_lowercase().ends_with(".torrent") && Path::new(a).is_file() {
-                torrent::open_add(&ui, Some(dios_engine::TorrentSource::Torrent(PathBuf::from(a))));
-                opened = true;
-            }
+        if let Some(source) = torrent_arg.as_deref().and_then(torrent_source_of) {
+            torrent::open_add(&ui, Some(source));
         }
     }
 
@@ -1242,11 +1245,49 @@ fn clipboard_pickup(ui: &Ui, pickup: String) {
 }
 
 /// A request from the browser extension.
+/// The main window is on the screen (not hidden to the tray, not minimized).
+fn main_shown(ui: &Ui) -> bool {
+    ui.ctx.main.upgrade().map(|m| m.window().is_visible() && !m.window().is_minimized()).unwrap_or(false)
+}
+
+/// Something the user can look at is moving: the main window, a download or torrent
+/// window, or the "Add torrent" window.
+fn ui_active(ui: &Ui) -> bool {
+    main_shown(ui)
+        || !ui.progress.borrow().is_empty()
+        || !ui.torrent_wins.borrow().is_empty()
+        || ui.torrent_add.upgrade().map(|d| d.window().is_visible()).unwrap_or(false)
+}
+
+/// The magnet link or .torrent file the program was started with, if any.
+fn torrent_launch_arg() -> Option<String> {
+    std::env::args().skip(1).map(|a| a.trim().to_string()).find(|a| torrent_source_of(a).is_some())
+}
+
+/// A magnet link, or the path of an existing .torrent file, as a torrent source.
+fn torrent_source_of(text: &str) -> Option<dios_engine::TorrentSource> {
+    let t = text.trim();
+    if t.to_ascii_lowercase().starts_with("magnet:") {
+        Some(dios_engine::TorrentSource::Magnet(t.to_string()))
+    } else if t.to_ascii_lowercase().ends_with(".torrent") && Path::new(t).is_file() {
+        Some(dios_engine::TorrentSource::Torrent(PathBuf::from(t)))
+    } else {
+        None
+    }
+}
+
 fn handle_api(ui: &Ui, event: api::ApiEvent) {
     match event {
         api::ApiEvent::Show => {
             bring_to_front(&ui.ctx);
             restore_hidden_progress(ui);
+        }
+        api::ApiEvent::Torrent(text) => {
+            bring_to_front(&ui.ctx);
+            restore_hidden_progress(ui);
+            if let Some(source) = torrent_source_of(&text) {
+                torrent::open_add(ui, Some(source));
+            }
         }
         api::ApiEvent::Links(l) => grab::open_links(ui, l),
         api::ApiEvent::Add(req) => {
