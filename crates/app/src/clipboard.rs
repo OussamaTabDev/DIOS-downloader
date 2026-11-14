@@ -63,7 +63,7 @@ pub fn monitor_pickup(text: &str) -> Option<String> {
 /// link or a magnet the user copied somewhere else.
 pub fn spawn(enabled: impl Fn() -> bool + Send + 'static, on_pickup: impl Fn(String) + Send + 'static) {
     std::thread::Builder::new()
-        .name("dios-clipboard".into())
+        .name("batiie-clipboard".into())
         .spawn(move || {
             let Ok(mut clip) = arboard::Clipboard::new() else { return };
             // ignore whatever was already copied before we started

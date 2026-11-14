@@ -1,6 +1,6 @@
 //! Tiny local HTTP API on 127.0.0.1 used by the browser extension.
 //!
-//! Only the extension can talk to it: requests must carry the `X-DIOS`
+//! Only the extension can talk to it: requests must carry the `X-Batiie`
 //! header (a web page cannot add custom headers to a cross-origin request
 //! without a CORS preflight, which we never approve) and any Origin header
 //! must belong to a browser extension.
@@ -13,7 +13,7 @@ use std::time::Duration;
 use tiny_http::{Header, Method, Request, Response, Server};
 
 /// Addresses the user chose to download with the browser itself (the server
-/// refused DIOS Downloader): the extension leaves them to the browser once.
+/// refused Batiie): the extension leaves them to the browser once.
 static FOR_BROWSER: std::sync::Mutex<Vec<(String, std::time::Instant)>> = std::sync::Mutex::new(Vec::new());
 
 /// Version of the browser add-in that ships with this program.
@@ -76,10 +76,10 @@ struct ResolveRequest {
     url: String,
     /// the site's cookies, used only if it asks for a login
     #[serde(default)]
-    cookie_list: Vec<dios_engine::ytdlp::BrowserCookie>,
+    cookie_list: Vec<batiie_engine::ytdlp::BrowserCookie>,
 }
 
-/// "Download all links with DIOS Downloader" from the browser's right click menu.
+/// "Download all links with Batiie" from the browser's right click menu.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LinksRequest {
@@ -109,7 +109,7 @@ pub enum ApiEvent {
 
 /// What the extension needs to know from Options (file types to take,
 /// sites to leave alone, keys, the video panel).
-pub fn config_json(s: &dios_engine::Settings) -> String {
+pub fn config_json(s: &batiie_engine::Settings) -> String {
     let split = |t: &str| t.split_whitespace().map(|x| x.to_string()).collect::<Vec<_>>();
     serde_json::json!({
         "ok": true,
@@ -132,7 +132,7 @@ pub fn bind(port: u16) -> Result<Server, String> {
     Server::http(("127.0.0.1", port)).map_err(|e| e.to_string())
 }
 
-/// Another DIOS Downloader is already running on this port: ask it to show itself.
+/// Another Batiie is already running on this port: ask it to show itself.
 /// Tell the running instance to come to the front, and to open `torrent` (a magnet link or
 /// the path of a .torrent file) when the system started us with one: "Open with" while the
 /// program is running must not lose the file.
@@ -143,17 +143,17 @@ pub fn notify_existing(port: u16, torrent: Option<&str>) -> bool {
     let _ = s.set_read_timeout(Some(Duration::from_secs(2)));
     let req = match torrent {
         Some(t) => format!(
-            "POST /torrent HTTP/1.1\r\nHost: 127.0.0.1\r\nX-DIOS: 1\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{t}",
+            "POST /torrent HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Batiie: 1\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{t}",
             t.len()
         ),
-        None => "POST /show HTTP/1.1\r\nHost: 127.0.0.1\r\nX-DIOS: 1\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_string(),
+        None => "POST /show HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Batiie: 1\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_string(),
     };
     if s.write_all(req.as_bytes()).is_err() {
         return false;
     }
     let mut buf = String::new();
     let _ = s.read_to_string(&mut buf);
-    buf.contains("DIOS") || buf.starts_with("HTTP/1.1 200")
+    buf.contains("Batiie") || buf.starts_with("HTTP/1.1 200")
 }
 
 pub fn serve(
@@ -162,7 +162,7 @@ pub fn serve(
     on_event: impl Fn(ApiEvent) + Send + 'static,
 ) {
     std::thread::Builder::new()
-        .name("dios-api".into())
+        .name("batiie-api".into())
         .spawn(move || {
             for req in server.incoming_requests() {
                 handle(req, &config, &on_event);
@@ -227,7 +227,7 @@ fn handle(mut req: Request, config: &impl Fn() -> String, on_event: &impl Fn(Api
     if !origin_allowed(header(&req, "Origin").as_deref()) {
         return reply(req, 403, r#"{"error":"forbidden"}"#);
     }
-    if header(&req, "X-DIOS").is_none() {
+    if header(&req, "X-Batiie").is_none() {
         return reply(req, 403, r#"{"error":"missing header"}"#);
     }
 
@@ -237,7 +237,7 @@ fn handle(mut req: Request, config: &impl Fn() -> String, on_event: &impl Fn(Api
             // "ext": the add-in version that came with this program; an older
             // add-in loaded from the program's folder reloads itself
             let body = format!(
-                r#"{{"app":"DIOSDownloader","version":"{}","ext":"{}"}}"#,
+                r#"{{"app":"Batiie","version":"{}","ext":"{}"}}"#,
                 env!("CARGO_PKG_VERSION"),
                 bundled_extension_version()
             );
@@ -269,7 +269,7 @@ fn handle(mut req: Request, config: &impl Fn() -> String, on_event: &impl Fn(Api
         }
         (Method::Post, "/show") => {
             on_event(ApiEvent::Show);
-            reply(req, 200, r#"{"ok":true,"app":"DIOS"}"#)
+            reply(req, 200, r#"{"ok":true,"app":"Batiie"}"#)
         }
         (Method::Post, "/torrent") => {
             let mut body = String::new();
@@ -281,7 +281,7 @@ fn handle(mut req: Request, config: &impl Fn() -> String, on_event: &impl Fn(Api
             // only what opens the "Add torrent" window: a magnet link or a .torrent file
             if lower.starts_with("magnet:") || lower.ends_with(".torrent") {
                 on_event(ApiEvent::Torrent(text));
-                reply(req, 200, r#"{"ok":true,"app":"DIOS"}"#)
+                reply(req, 200, r#"{"ok":true,"app":"Batiie"}"#)
             } else {
                 reply(req, 400, r#"{"error":"not a torrent"}"#)
             }
@@ -327,7 +327,7 @@ fn handle(mut req: Request, config: &impl Fn() -> String, on_event: &impl Fn(Api
                 }
                 let _done = Done;
                 let cookies = (!r.cookie_list.is_empty()).then_some(r.cookie_list.as_slice());
-                let body = match dios_engine::ytdlp::resolve(&r.url, cookies) {
+                let body = match batiie_engine::ytdlp::resolve(&r.url, cookies) {
                     Ok(info) => serde_json::json!({
                         "ok": true, "title": info.title, "site": info.site, "options": info.options
                     }),

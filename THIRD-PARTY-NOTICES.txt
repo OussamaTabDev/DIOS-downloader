@@ -1,7 +1,16 @@
-DIOS Downloader uses the following open source components.
+Batiie uses the following open source components.
 
-Slint (user interface toolkit) - https://slint.dev
-  Used under the Slint Royalty-free Desktop, Mobile, and Web Applications License 2.0.
+htmx (interface library) - https://htmx.org
+  Zero-Clause BSD. The SSE extension (htmx-ext-sse) is also BSD 0-Clause; idiomorph is BSD 2-Clause.
+
+wry / tao (native web view window) - https://github.com/tauri-apps
+  MIT OR Apache-2.0.
+
+axum, maud (local server and HTML templates)
+  MIT OR Apache-2.0.
+
+(The previous Slint interface in legacy/slint-app is used under the Slint Royalty-free Desktop,
+ Mobile, and Web Applications License 2.0 - https://slint.dev - and is not part of the default build.)
 
 yt-dlp - https://github.com/yt-dlp/yt-dlp
   The Unlicense (public domain).

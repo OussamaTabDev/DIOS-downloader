@@ -1,4 +1,4 @@
-// Runs background.js with a fake `chrome` API and a fake DIOS Downloader app.
+// Runs background.js with a fake `chrome` API and a fake Batiie app.
 // node extension/test/background.sim.js
 const fs = require("fs"), path = require("path"), vm = require("vm"), assert = require("assert");
 const dir = path.join(__dirname, "..");

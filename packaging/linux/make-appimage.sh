@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# DIOS Downloader — build an AppImage from a staged Linux build.
+# Batiie — build an AppImage from a staged Linux build.
 #
 # Usage:  ./packaging/linux/make-appimage.sh [stage-dir] [version]
 #
-#   stage-dir   folder with the staged files (default: build-cache/stage-linux/DIOSDownloader,
+#   stage-dir   folder with the staged files (default: build-cache/stage-linux/Batiie,
 #               what build-linux.sh assembles) — same input as make-deb.sh.
 #   version     version string for the file name (default: git tag, else Cargo.toml).
 #
-# Output: dist/DIOSDownloader-<version>-x86_64.AppImage
+# Output: dist/Batiie-<version>-x86_64.AppImage
 #
 # The AppImage is self-contained: program, both browser extensions and the
 # desktop entry. yt-dlp/ffmpeg are fetched by the app itself into the user's
@@ -21,11 +21,11 @@ cd "$(dirname "$0")/../.."   # project root
 
 fail() { printf '\033[31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
 
-STAGE="${1:-build-cache/stage-linux/DIOSDownloader}"
+STAGE="${1:-build-cache/stage-linux/Batiie}"
 VERSION="${2:-}"
 
 [ -d "$STAGE" ] || fail "stage dir not found: $STAGE (run build-linux.sh first, or pass the folder)"
-[ -f "$STAGE/DIOSDownloader" ] || fail "$STAGE/DIOSDownloader is missing"
+[ -f "$STAGE/Batiie" ] || fail "$STAGE/Batiie is missing"
 
 # ---------------------------------------------------------------- version
 if [ -z "$VERSION" ]; then
@@ -37,7 +37,7 @@ fi
 [ -n "$VERSION" ] || VERSION="0.0.0"
 VERSION="${VERSION#v}"
 
-echo "==> Building DIOSDownloader $VERSION AppImage (x86_64)"
+echo "==> Building Batiie $VERSION AppImage (x86_64)"
 
 # ---------------------------------------------------------------- appimagetool
 APPIMAGETOOL_URL="${APPIMAGETOOL_URL:-https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage}"
@@ -72,37 +72,37 @@ APPDIR="$WORK/AppDir"
 mkdir -p "$APPDIR/usr/bin"
 
 # the program — the extensions sit NEXT TO the binary, which is where the
-# app looks for them (Help > Add DIOS Downloader to my browser)
-cp "$STAGE/DIOSDownloader" "$APPDIR/usr/bin/"
-chmod 755 "$APPDIR/usr/bin/DIOSDownloader"
+# app looks for them (Help > Add Batiie to my browser)
+cp "$STAGE/Batiie" "$APPDIR/usr/bin/"
+chmod 755 "$APPDIR/usr/bin/Batiie"
 for ext in extension extension-firefox; do
     [ -d "$STAGE/$ext" ] && cp -r "$STAGE/$ext" "$APPDIR/usr/bin/$ext"
 done
-ls "$STAGE"/dios-downloader-firefox-*.xpi >/dev/null 2>&1 && \
-    cp "$STAGE"/dios-downloader-firefox-*.xpi "$APPDIR/usr/bin/" || true
+ls "$STAGE"/batiie-firefox-*.xpi >/dev/null 2>&1 && \
+    cp "$STAGE"/batiie-firefox-*.xpi "$APPDIR/usr/bin/" || true
 [ -f "$STAGE/THIRD-PARTY-NOTICES.txt" ] && cp "$STAGE/THIRD-PARTY-NOTICES.txt" "$APPDIR/usr/bin/"
 
 # desktop entry + icons (appimagetool reads them from the AppDir root)
-[ -f "$STAGE/dios-downloader.desktop" ] || fail "$STAGE/dios-downloader.desktop is missing"
-cp "$STAGE/dios-downloader.desktop" "$APPDIR/"
-[ -f "$STAGE/dios-downloader.png" ] || fail "$STAGE/dios-downloader.png is missing"
-cp "$STAGE/dios-downloader.png" "$APPDIR/dios-downloader.png"
-cp "$STAGE/dios-downloader.png" "$APPDIR/.DirIcon"
+[ -f "$STAGE/batiie.desktop" ] || fail "$STAGE/batiie.desktop is missing"
+cp "$STAGE/batiie.desktop" "$APPDIR/"
+[ -f "$STAGE/batiie.png" ] || fail "$STAGE/batiie.png is missing"
+cp "$STAGE/batiie.png" "$APPDIR/batiie.png"
+cp "$STAGE/batiie.png" "$APPDIR/.DirIcon"
 mkdir -p "$APPDIR/usr/share/icons/hicolor/256x256/apps"
-cp "$STAGE/dios-downloader.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/dios-downloader.png"
+cp "$STAGE/batiie.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/batiie.png"
 
 # AppRun: exec the real binary (readlink resolves the AppImage path)
 cat > "$APPDIR/AppRun" <<'EOF'
 #!/bin/sh
-# DIOS Downloader AppRun — start the program with all arguments passed through
+# Batiie AppRun — start the program with all arguments passed through
 HERE="$(dirname "$(readlink -f "$0")")"
-exec "$HERE/usr/bin/DIOSDownloader" "$@"
+exec "$HERE/usr/bin/Batiie" "$@"
 EOF
 chmod 755 "$APPDIR/AppRun"
 
 # ---------------------------------------------------------------- build
 mkdir -p dist
-OUT="dist/DIOSDownloader-$VERSION-x86_64.AppImage"
+OUT="dist/Batiie-$VERSION-x86_64.AppImage"
 "$APPIMAGETOOL" "${RUNMODE[@]}" --no-appstream "$APPDIR" "$OUT"
 rm -rf "$WORK"
 

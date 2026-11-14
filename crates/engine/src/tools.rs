@@ -1,6 +1,6 @@
-//! The helper programs that come with DIOS Downloader: yt-dlp (finds the video
+//! The helper programs that come with Batiie: yt-dlp (finds the video
 //! links) and ffmpeg (joins video + audio), both from their GitHub releases. They live in the "tools" folder
-//! of the install folder. Once a day, silently, DIOS Downloader checks for new
+//! of the install folder. Once a day, silently, Batiie checks for new
 //! versions and updates them, and puts them back if one went missing.
 
 use crate::mux::hide_window;
@@ -68,7 +68,7 @@ pub fn tool_dirs() -> Vec<PathBuf> {
         v.push(dir.join("tools"));
         v.push(dir);
     }
-    if let Some(p) = directories::ProjectDirs::from("com", "DIOS", "DIOSDownloader") {
+    if let Some(p) = directories::ProjectDirs::from("com", "Batiie", "Batiie") {
         v.push(p.data_dir().join("tools"));
     }
     v
@@ -118,7 +118,7 @@ fn writable_dir(name: &str) -> Option<PathBuf> {
 }
 
 fn can_write(dir: &Path) -> bool {
-    let probe = dir.join(".dios-write-test");
+    let probe = dir.join(".batiie-write-test");
     let ok = std::fs::write(&probe, b"x").is_ok();
     let _ = std::fs::remove_file(&probe);
     ok
@@ -287,7 +287,7 @@ async fn ffmpeg(client: &reqwest::Client, data_dir: &Path) -> anyhow::Result<()>
         return Ok(());
     }
     // download the archive, unpack it with tar, take the ffmpeg binary
-    let work = std::env::temp_dir().join(format!("dios-ffmpeg-{}", std::process::id()));
+    let work = std::env::temp_dir().join(format!("batiie-ffmpeg-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&work);
     std::fs::create_dir_all(&work)?;
     let archive_name = if cfg!(windows) { "ffmpeg.zip" } else { "ffmpeg.tar.xz" };
@@ -385,7 +385,7 @@ mod tests {
 
     #[test]
     fn replace_and_find() {
-        let dir = std::env::temp_dir().join(format!("dios-tools-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("batiie-tools-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("a/b")).unwrap();
         std::fs::write(dir.join("a/b/ffmpeg.exe"), b"new").unwrap();

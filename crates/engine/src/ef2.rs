@@ -1,5 +1,5 @@
 //! Download lists in the .ef2 list format, so lists move between
-//! DIOS Downloader and other download managers:
+//! Batiie and other download managers:
 //!
 //! ```text
 //! <

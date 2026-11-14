@@ -1,14 +1,14 @@
 [Desktop Entry]
 Type=Application
 Version=1.0
-Name=DIOS Downloader
+Name=Batiie
 GenericName=Download Manager
 Comment=Fast download manager: multi-connection downloads, resume, video and audio
-Exec=DIOSDownloader %U
-Icon=dios-downloader
+Exec=Batiie %U
+Icon=batiie
 Terminal=false
 Categories=Network;FileTransfer;
 MimeType=application/x-bittorrent;x-scheme-handler/magnet;
-Keywords=download;manager;DIOS;video;
+Keywords=download;manager;Batiie;video;
 StartupNotify=true
-StartupWMClass=DIOSDownloader
+StartupWMClass=Batiie

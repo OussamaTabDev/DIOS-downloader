@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// A helper program (ffmpeg, yt-dlp): the copy in the app's "tools"
-/// folder wins, then one next to DIOSDownloader.exe, then PATH.
+/// folder wins, then one next to Batiie.exe, then PATH.
 pub fn find_tool(name: &str) -> Option<PathBuf> {
     let exe_name = if cfg!(windows) { format!("{name}.exe") } else { name.to_string() };
     if let Some(p) = crate::tools::bundled(name) {
@@ -59,7 +59,7 @@ pub fn format_for(file_name: &str) -> &'static str {
 pub fn merge(video: &Path, audio: &Path, output: &Path, final_name: &str) -> anyhow::Result<()> {
     let Some(ffmpeg) = find_ffmpeg() else {
         bail!(
-            "ffmpeg.exe is missing. DIOS Downloader gets it by itself in a few minutes \
+            "ffmpeg.exe is missing. Batiie gets it by itself in a few minutes \
              (internet needed) - then press Resume to join video and audio"
         );
     };
@@ -103,7 +103,7 @@ mod tests {
     #[test]
     fn merges_video_and_audio() {
         let Some(ffmpeg) = find_ffmpeg() else { return };
-        let dir = std::env::temp_dir().join("dios-mux-test");
+        let dir = std::env::temp_dir().join("batiie-mux-test");
         let _ = std::fs::create_dir_all(&dir);
         let (v, a) = (dir.join("v.mp4"), dir.join("a.m4a"));
         let gen = |args: &[&str]| {

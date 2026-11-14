@@ -1,6 +1,6 @@
-# DIOS Downloader — continuous integration
+# Batiie — continuous integration
 #
-# The "Build DIOS Downloader" workflow (build.yml) already compiles Windows
+# The "Build Batiie" workflow (build.yml) already compiles Windows
 # and runs the engine tests there on every push. This workflow adds what it
 # does not cover: the workspace tests on Linux, on the same ubuntu-22.04
 # image the release packages are built on.
@@ -28,8 +28,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
-            libwayland-dev libxcb1-dev pkg-config
+            libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev \\
+            libayatana-appindicator3-dev librsvg2-dev libssl-dev pkg-config
 
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:

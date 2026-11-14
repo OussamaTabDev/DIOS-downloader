@@ -570,7 +570,7 @@
         },
         (res) => {
           b.loading = false;
-          if (chrome.runtime.lastError || !res) return renderOne(b, "DIOS Downloader is not running — open the app and try again.", true);
+          if (chrome.runtime.lastError || !res) return renderOne(b, "Batiie is not running — open the app and try again.", true);
           if (res.error) return renderOne(b, res.error, true);
           b.own = res.items || [];
           if (b.own.length === 1 && !b.own[0].disabled && !b.own[0].yt) return download(b, b.own[0]);
@@ -726,9 +726,9 @@
     const fileName = `${cleanTitle()}.${ext}`;
     chrome.runtime.sendMessage({ type: "dios-download", item: m, title: document.title, fileName }, (res) => {
       if (chrome.runtime.lastError || !res || !res.ok) {
-        flashOne(b, "DIOS Downloader is not running — open the app and try again.", true);
+        flashOne(b, "Batiie is not running — open the app and try again.", true);
       } else {
-        flashOne(b, "Sent to DIOS Downloader ✔", false);
+        flashOne(b, "Sent to Batiie ✔", false);
       }
     });
   }

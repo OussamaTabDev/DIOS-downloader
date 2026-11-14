@@ -1,7 +1,7 @@
-//! The texts made in Rust (statuses, messages) in the language of the
-//! program. Arabic is the table below; the other languages are the files
-//! lang/rs/<code>.json (English text -> translation). The window texts
-//! themselves are translated by Slint (lang/<code>/LC_MESSAGES/*.po).
+//! Every text of the program in the language the user chose. The English text
+//! is the key: Arabic is the table below, the other languages are the files
+//! lang/rs/<code>.json (statuses, messages) and lang/<code>/LC_MESSAGES/batiie.po
+//! (the texts of the windows and menus). Anything missing shows in English.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -39,7 +39,6 @@ pub fn index_of(code: &str) -> usize {
 /// Switch every window and every Rust text to this language.
 pub fn apply(lang: &str) {
     CURRENT.store(index_of(lang), Ordering::Relaxed);
-    let _ = slint::select_bundled_translation(LANGS[index_of(lang)].0);
 }
 
 pub fn current() -> &'static str {
@@ -72,20 +71,102 @@ fn table(code: &str) -> Option<&'static HashMap<String, String>> {
 
 /// The text in the current language.
 pub fn t(en: &str) -> String {
-    match current() {
-        "en" => {}
-        "ar" => {
-            if let Some(ar) = lookup(en) {
-                return ar.to_string();
-            }
+    let code = current();
+    if code == "en" {
+        return en.to_string();
+    }
+    if code == "ar" {
+        if let Some(ar) = lookup(en) {
+            return ar.to_string();
         }
-        code => {
-            if let Some(v) = table(code).and_then(|m| m.get(en)) {
-                return v.clone();
-            }
+    } else if let Some(v) = table(code).and_then(|m| m.get(en)) {
+        return v.clone();
+    }
+    if let Some(v) = po_table(code).and_then(|m| m.get(en)) {
+        if !v.is_empty() {
+            return v.clone();
         }
     }
     en.to_string()
+}
+
+/// The window texts of a language, read from its .po file once.
+fn po_table(code: &str) -> Option<&'static HashMap<String, String>> {
+    static TABLES: OnceLock<HashMap<&'static str, HashMap<String, String>>> = OnceLock::new();
+    TABLES
+        .get_or_init(|| {
+            let mut all = HashMap::new();
+            for (code, src) in [
+                ("ar", include_str!("../lang/ar/LC_MESSAGES/batiie.po")),
+                ("fr", include_str!("../lang/fr/LC_MESSAGES/batiie.po")),
+                ("es", include_str!("../lang/es/LC_MESSAGES/batiie.po")),
+                ("de", include_str!("../lang/de/LC_MESSAGES/batiie.po")),
+                ("pt", include_str!("../lang/pt/LC_MESSAGES/batiie.po")),
+                ("tr", include_str!("../lang/tr/LC_MESSAGES/batiie.po")),
+                ("ru", include_str!("../lang/ru/LC_MESSAGES/batiie.po")),
+            ] {
+                all.insert(code, parse_po(src));
+            }
+            all
+        })
+        .get(code)
+}
+
+/// msgid / msgstr pairs of a .po file (quoted lines may continue on the next line).
+fn parse_po(src: &str) -> HashMap<String, String> {
+    fn unquote(l: &str) -> String {
+        let l = l.trim();
+        let inner = l.strip_prefix('"').and_then(|x| x.strip_suffix('"')).unwrap_or("");
+        let mut out = String::new();
+        let mut chars = inner.chars();
+        while let Some(c) = chars.next() {
+            if c != '\\' {
+                out.push(c);
+                continue;
+            }
+            match chars.next() {
+                Some('n') => out.push('\n'),
+                Some('t') => out.push('\t'),
+                Some('"') => out.push('"'),
+                Some('\\') => out.push('\\'),
+                Some(o) => {
+                    out.push('\\');
+                    out.push(o);
+                }
+                None => {}
+            }
+        }
+        out
+    }
+    let mut map = HashMap::new();
+    let (mut id, mut s) = (String::new(), String::new());
+    // 0 = reading msgid, 1 = reading msgstr
+    let mut mode = 0;
+    let mut flush = |id: &mut String, s: &mut String| {
+        if !id.is_empty() && !s.is_empty() {
+            map.insert(std::mem::take(id), std::mem::take(s));
+        }
+        id.clear();
+        s.clear();
+    };
+    for line in src.lines() {
+        if let Some(rest) = line.strip_prefix("msgid ") {
+            flush(&mut id, &mut s);
+            id = unquote(rest);
+            mode = 0;
+        } else if let Some(rest) = line.strip_prefix("msgstr ") {
+            s = unquote(rest);
+            mode = 1;
+        } else if line.trim_start().starts_with('"') {
+            if mode == 0 {
+                id.push_str(&unquote(line));
+            } else {
+                s.push_str(&unquote(line));
+            }
+        }
+    }
+    flush(&mut id, &mut s);
+    map
 }
 
 /// A text with "{}" places, filled in order.
@@ -162,10 +243,10 @@ const AR: &[(&str, &str)] = &[
         "حذف كل التحميلات المكتملة من القائمة؟\n(الملفات تبقى على القرص.)",
     ),
     (
-        "A short message about DIOS Downloader was copied to the clipboard.\nPaste it in a chat or an e-mail to a friend.",
-        "تم نسخ رسالة قصيرة عن DIOS Downloader إلى الحافظة.\nالصقها في محادثة أو بريد لصديقك.",
+        "A short message about Batiie was copied to the clipboard.\nPaste it in a chat or an e-mail to a friend.",
+        "تم نسخ رسالة قصيرة عن Batiie إلى الحافظة.\nالصقها في محادثة أو بريد لصديقك.",
     ),
-    ("DIOS Downloader {}\n\nThe video downloader (yt-dlp) is up to date.\n\n{}", "DIOS Downloader {}\n\nأداة الفيديو (yt-dlp) محدّثة.\n\n{}"),
+    ("Batiie {}\n\nThe video downloader (yt-dlp) is up to date.\n\n{}", "Batiie {}\n\nأداة الفيديو (yt-dlp) محدّثة.\n\n{}"),
     ("Could not update yt-dlp:\n\n{}", "تعذّر تحديث yt-dlp:\n\n{}"),
     ("Download these {} files again from the beginning?", "إعادة تحميل هذه الملفات ({}) من البداية؟"),
     ("Download “{}” again from the beginning?", "إعادة تحميل “{}” من البداية؟"),
@@ -207,8 +288,8 @@ const AR: &[(&str, &str)] = &[
     ("Give the category a name", "اكتب اسماً للتصنيف"),
     ("A category with this name already exists", "يوجد تصنيف بهذا الاسم بالفعل"),
     (
-        "This category comes with DIOS Downloader and can't be deleted (you can change its file types in Properties).",
-        "هذا التصنيف أساسي في DIOS Downloader ولا يمكن حذفه (يمكنك تغيير أنواع ملفاته من الخصائص).",
+        "This category comes with Batiie and can't be deleted (you can change its file types in Properties).",
+        "هذا التصنيف أساسي في Batiie ولا يمكن حذفه (يمكنك تغيير أنواع ملفاته من الخصائص).",
     ),
     (
         "Delete the category “{}”?\nIts files stay where they are and move to their file type's category.",
@@ -254,8 +335,8 @@ const AR: &[(&str, &str)] = &[
     ("Type the site and the user name", "اكتب الموقع واسم المستخدم"),
     ("Could not save: {}", "تعذّر الحفظ: {}"),
     (
-        "Restart DIOS Downloader to use the new port. Set the same port in the browser extension.",
-        "أعد تشغيل DIOS Downloader لاستخدام المنفذ الجديد، واضبط نفس المنفذ في إضافة المتصفح.",
+        "Restart Batiie to use the new port. Set the same port in the browser extension.",
+        "أعد تشغيل Batiie لاستخدام المنفذ الجديد، واضبط نفس المنفذ في إضافة المتصفح.",
     ),
     (
         "Paste the playlist address (https://…/playlist?list=…)",
@@ -273,41 +354,41 @@ const AR: &[(&str, &str)] = &[
     ("Any other browser: copy the folder", "أي متصفح آخر: انسخ المجلد"),
     ("No browser was found on this computer automatically. Click \"Other browser\" and follow the steps.", "لم يُعثر على أي متصفح تلقائياً. اضغط «متصفح آخر» واتبع الخطوات."),
     ("1. Open your browser's extensions page and turn on \"Developer mode\".\n2. Click \"Load unpacked\" (Firefox: \"Load Temporary Add-on…\").\n3. Paste the folder path (Ctrl+V – it is already copied) and choose it.\n\nFirefox-based browsers use the \"extension-firefox\" folder instead.", "1. افتح صفحة الإضافات في متصفحك وفعّل «وضع المطوّر».\n2. اضغط «تحميل إضافة غير مضغوطة» (فايرفوكس: «تحميل إضافة مؤقتة…»).\n3. الصق مسار المجلد (Ctrl+V – تم نسخه بالفعل) واختره.\n\nالمتصفحات المبنية على فايرفوكس تستخدم المجلد «extension-firefox»."),
-    ("DIOS Downloader – download manager", "DIOS Downloader – برنامج تحميل"),
+    ("Batiie – download manager", "Batiie – برنامج تحميل"),
     ("Click to add from the store", "اضغط للإضافة من المتجر"),
     ("{} is not installed on this computer.", "{} غير مثبّت على هذا الكمبيوتر."),
     ("{} opened the store page: click \"Add\" / \"Get\" there.", "فتح {} صفحة المتجر: اضغط \"إضافة\" / \"Get\" هناك."),
     ("Could not start the update:\n\n{}", "تعذّر بدء التحديث:\n\n{}"),
     ("A new version is being prepared. It is installed by itself when it is ready.", "يجري تجهيز إصدار جديد، وسيُثبَّت تلقائياً عندما يكون جاهزاً."),
     ("Could not check for updates:\n\n{}", "تعذّر البحث عن تحديثات:\n\n{}"),
-    ("DIOS Downloader is up to date (version {}).", "DIOS Downloader محدَّث (الإصدار {})."),
+    ("Batiie is up to date (version {}).", "Batiie محدَّث (الإصدار {})."),
     ("Version {} is available. This copy was not installed with the setup, so it cannot update itself.", "الإصدار {} متاح. هذه النسخة لم تُثبَّت بملف الإعداد، لذلك لا يمكنها تحديث نفسها."),
-    ("Version {} is available. It is being prepared now and installed by itself; DIOS Downloader opens again after that.", "الإصدار {} متاح. يجري تجهيزه الآن وتثبيته تلقائياً، ثم يُفتح DIOS Downloader من جديد."),
+    ("Version {} is available. It is being prepared now and installed by itself; Batiie opens again after that.", "الإصدار {} متاح. يجري تجهيزه الآن وتثبيته تلقائياً، ثم يُفتح Batiie من جديد."),
     ("Could not get the update:\n\n{}", "تعذّر الحصول على التحديث:\n\n{}"),
     (
-        "The extension folder was not found next to DIOSDownloader.exe. Install DIOS Downloader again.",
-        "لم يتم العثور على مجلد الإضافة بجانب DIOSDownloader.exe. ثبّت DIOS Downloader مرة أخرى.",
+        "The extension folder was not found next to Batiie.exe. Install Batiie again.",
+        "لم يتم العثور على مجلد الإضافة بجانب Batiie.exe. ثبّت Batiie مرة أخرى.",
     ),
     (
         "Firefox opened its add-ons debugging page.\n1. Click \"Load Temporary Add-on…\".\n2. Paste the folder path (Ctrl+V, it is already copied) and open the file \"manifest.json\" in it.\n\nFirefox removes add-ons loaded this way when it closes. To keep it for good the extension must be signed by Mozilla (free) – ask for the signed version.",
         "فتح Firefox صفحة تصحيح الإضافات.\n1. اضغط \"Load Temporary Add-on…\".\n2. الصق مسار المجلد (Ctrl+V، تم نسخه بالفعل) وافتح ملف \"manifest.json\" بداخله.\n\nيحذف Firefox الإضافات المحمّلة بهذه الطريقة عند إغلاقه. لتبقى دائماً يجب أن توقّعها Mozilla (مجاناً) – اطلب النسخة الموقّعة.",
     ),
     (
-        "{} opened its extensions page.\n1. Turn on \"Developer mode\" (a switch on that page).\n2. Click \"Load unpacked\".\n3. Paste the folder path (Ctrl+V – it is already copied) and click \"Select folder\".\n\nThat's all: the DIOS Downloader icon appears next to the address bar. You do this only once.",
-        "فتح {} صفحة الإضافات.\n1. شغّل \"Developer mode\" (وضع المطوّر) من المفتاح الموجود في الصفحة.\n2. اضغط \"Load unpacked\".\n3. الصق مسار المجلد (Ctrl+V – تم نسخه بالفعل) واضغط \"Select folder\".\n\nهذا كل شيء: ستظهر أيقونة DIOS Downloader بجانب شريط العنوان. تفعل هذا مرة واحدة فقط.",
+        "{} opened its extensions page.\n1. Turn on \"Developer mode\" (a switch on that page).\n2. Click \"Load unpacked\".\n3. Paste the folder path (Ctrl+V – it is already copied) and click \"Select folder\".\n\nThat's all: the Batiie icon appears next to the address bar. You do this only once.",
+        "فتح {} صفحة الإضافات.\n1. شغّل \"Developer mode\" (وضع المطوّر) من المفتاح الموجود في الصفحة.\n2. اضغط \"Load unpacked\".\n3. الصق مسار المجلد (Ctrl+V – تم نسخه بالفعل) واضغط \"Select folder\".\n\nهذا كل شيء: ستظهر أيقونة Batiie بجانب شريط العنوان. تفعل هذا مرة واحدة فقط.",
     ),
     // tips
     (
-        "Copy a download link anywhere (Ctrl+C) and DIOS Downloader offers to download it.",
-        "انسخ أي رابط تحميل (Ctrl+C) وسيعرض عليك DIOS Downloader تحميله.",
+        "Copy a download link anywhere (Ctrl+C) and Batiie offers to download it.",
+        "انسخ أي رابط تحميل (Ctrl+C) وسيعرض عليك Batiie تحميله.",
     ),
     (
         "Play a video on a web page and click \"Download this video\" above it to choose the quality.",
         "شغّل أي فيديو في صفحة ويب واضغط \"Download this video\" فوقه لتختار الجودة.",
     ),
     (
-        "Right click a web page in Chrome or Edge and choose \"Download all links with DIOS Downloader\" to pick files from the page.",
-        "اضغط كليك يمين على أي صفحة في كروم أو إيدج واختر \"Download all links with DIOS Downloader\" لتختار ملفات من الصفحة.",
+        "Right click a web page in Chrome or Edge and choose \"Download all links with Batiie\" to pick files from the page.",
+        "اضغط كليك يمين على أي صفحة في كروم أو إيدج واختر \"Download all links with Batiie\" لتختار ملفات من الصفحة.",
     ),
     (
         "Every download uses up to 32 connections. If a server is slow with many, add it to Options > Connection > Exceptions.",
@@ -355,10 +436,10 @@ const AR: &[(&str, &str)] = &[
     ),
     // 1.0.4
     (
-        "Firefox opened the DIOS Downloader add-on.\n1. Click \"Add\" in the message Firefox shows.\n2. Then click \"OK\".\n\nThe add-on is signed by Mozilla, so it stays in Firefox after you close it and updates by itself.",
-        "فتح فايرفوكس إضافة DIOS Downloader.\n1. اضغط \"إضافة\" في الرسالة التي يعرضها فايرفوكس.\n2. ثم اضغط \"حسنًا\".\n\nالإضافة موقّعة من Mozilla، لذلك تبقى في فايرفوكس بعد إغلاقه وتتحدّث وحدها.",
+        "Firefox opened the Batiie add-on.\n1. Click \"Add\" in the message Firefox shows.\n2. Then click \"OK\".\n\nThe add-on is signed by Mozilla, so it stays in Firefox after you close it and updates by itself.",
+        "فتح فايرفوكس إضافة Batiie.\n1. اضغط \"إضافة\" في الرسالة التي يعرضها فايرفوكس.\n2. ثم اضغط \"حسنًا\".\n\nالإضافة موقّعة من Mozilla، لذلك تبقى في فايرفوكس بعد إغلاقه وتتحدّث وحدها.",
     ),
-    ("DIOS Downloader was updated to version {} by itself.", "تم تحديث DIOS Downloader تلقائيًا إلى الإصدار {}."),
+    ("Batiie was updated to version {} by itself.", "تم تحديث Batiie تلقائيًا إلى الإصدار {}."),
     ("What's new:", "الجديد في هذا الإصدار:"),
     (
         "A \"Download this video\" button on every video of a page, and you can drag it anywhere on the video.",
@@ -377,8 +458,8 @@ const AR: &[(&str, &str)] = &[
         "خمسة مظاهر جديدة وإعداد لشفافية النافذة (عرض > المظهر).",
     ),
     (
-        "Brave is supported (Help > Add DIOS Downloader to my browser).",
-        "دعم متصفح Brave (مساعدة > إضافة DIOS Downloader إلى متصفحي).",
+        "Brave is supported (Help > Add Batiie to my browser).",
+        "دعم متصفح Brave (مساعدة > إضافة Batiie إلى متصفحي).",
     ),
     ("Firefox: the add-on stays in Firefox after it is closed.", "فايرفوكس: الإضافة تبقى بعد إغلاق المتصفح."),
     (
@@ -390,7 +471,7 @@ const AR: &[(&str, &str)] = &[
         "A new playlist icon, and a smaller icon on the window title.",
         "أيقونة جديدة لقوائم التشغيل، وأيقونة أصغر في شريط عنوان النافذة.",
     ),
-    ("Support DIOS Downloader with PayPal from Help > About.", "ادعم DIOS Downloader عبر PayPal من مساعدة > حول."),
+    ("Support Batiie with PayPal from Help > About.", "ادعم Batiie عبر PayPal من مساعدة > حول."),
     // 1.0.5
     (
         "The main window can be maximized to the full screen.",
@@ -421,8 +502,8 @@ const AR: &[(&str, &str)] = &[
         "تعذّر البحث عن تحديثات",
     ),
     (
-        "DIOS Downloader is up to date",
-        "DIOS Downloader محدَّث",
+        "Batiie is up to date",
+        "Batiie محدَّث",
     ),
     (
         "Version {} is the newest version.",
@@ -445,8 +526,8 @@ const AR: &[(&str, &str)] = &[
         "جارٍ تثبيت الإصدار {}…",
     ),
     (
-        "DIOS Downloader closes now and opens again when it is installed.",
-        "سيُغلق DIOS Downloader الآن ويفتح من جديد بعد التثبيت.",
+        "Batiie closes now and opens again when it is installed.",
+        "سيُغلق Batiie الآن ويفتح من جديد بعد التثبيت.",
     ),
     (
         "Could not get the update",
@@ -485,8 +566,8 @@ const AR: &[(&str, &str)] = &[
         "زر التحميل على الفيديوهات في المتصفح أصبح أصغر، ويمكن تغيير حجمه من إعدادات الإضافة.",
     ),
     (
-        "Updates are signed: DIOS Downloader installs only updates made by its developer.",
-        "التحديثات أصبحت موقّعة: DIOS Downloader لا يثبّت إلا التحديثات الصادرة من مطوّره.",
+        "Updates are signed: Batiie installs only updates made by its developer.",
+        "التحديثات أصبحت موقّعة: Batiie لا يثبّت إلا التحديثات الصادرة من مطوّره.",
     ),
     (
         "Downloaded files are marked as coming from the internet, so Windows warns before opening an unsafe file.",
@@ -541,8 +622,13 @@ const AR: &[(&str, &str)] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Tests switch the global language; they may not run in parallel.
+    static LANG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn fills_places() {
+        let _g = LANG_LOCK.lock().unwrap();
         assert_eq!(tf("Tip {} of {}", &[&1, &14]), "Tip 1 of 14");
         CURRENT.store(index_of("ar"), Ordering::Relaxed);
         assert_eq!(tf("Tip {} of {}", &[&1, &14]), "نصيحة 1 من 14");
@@ -553,14 +639,32 @@ mod tests {
     }
 
     #[test]
+    fn window_texts_come_from_the_po_files() {
+        let _g = LANG_LOCK.lock().unwrap();
+        CURRENT.store(index_of("fr"), Ordering::Relaxed);
+        assert_eq!(t("Open"), "Ouvrir");
+        assert_eq!(t("Open with…"), "Ouvrir avec…");
+        CURRENT.store(index_of("ar"), Ordering::Relaxed);
+        assert_eq!(t("Open"), "فتح");
+        CURRENT.store(0, Ordering::Relaxed);
+        assert_eq!(t("Open"), "Open");
+    }
+
+    #[test]
+    fn po_escapes_and_continuations() {
+        let m = parse_po("msgid \"\"\nmsgstr \"\"\n\"x\\n\"\n\nmsgid \"a\\\"b\"\nmsgstr \"c\"\n\"d\\n\"\n");
+        assert_eq!(m.get("a\"b").map(String::as_str), Some("cd\n"));
+    }
+
+    #[test]
     fn every_language_has_every_text() {
-        // the tables are read from JSON: a broken file would silently fall back to English
         for (code, _) in LANGS.iter().skip(2) {
             let m = table(code).expect("table");
             assert!(m.len() > 150, "{code}: only {} texts", m.len());
             for (en, tr) in m {
                 assert_eq!(en.matches("{}").count(), tr.matches("{}").count(), "{code}: {en}");
             }
+            assert!(po_table(code).expect("po").len() > 300, "{code}: po too small");
         }
         assert_eq!(index_of("xx"), 0);
         assert_eq!(effective("es"), "es");

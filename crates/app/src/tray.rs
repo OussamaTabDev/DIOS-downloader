@@ -29,7 +29,7 @@ mod imp {
     impl Tray {
         pub fn new() -> Option<Tray> {
             let menu = Menu::new();
-            let show = MenuItem::new("Restore DIOS Downloader", true, None);
+            let show = MenuItem::new("Restore Batiie", true, None);
             let add = MenuItem::new("Add new download…", true, None);
             let resume = MenuItem::new("Resume all downloads", true, None);
             let stop = MenuItem::new("Stop all downloads", true, None);
@@ -50,9 +50,9 @@ mod imp {
             menu.append(&PredefinedMenuItem::separator()).ok()?;
             menu.append(&about).ok()?;
             menu.append(&exit).ok()?;
-            let icon = Icon::from_rgba(include_bytes!("../ui/tray32.rgba").to_vec(), 32, 32).ok()?;
+            let icon = Icon::from_rgba(include_bytes!("../assets/img/tray32.rgba").to_vec(), 32, 32).ok()?;
             let tray = TrayIconBuilder::new()
-                .with_tooltip("DIOS Downloader")
+                .with_tooltip("Batiie")
                 .with_icon(icon)
                 .with_menu(Box::new(menu))
                 // the menu on a right click only; a double click opens the window
@@ -113,41 +113,41 @@ mod imp {
 
     type Queue = Arc<Mutex<Vec<TrayAction>>>;
 
-    struct DiosTray {
+    struct BatiieTray {
         queue: Queue,
         limiter: bool,
         icon: Vec<ksni::Icon>,
     }
 
-    impl DiosTray {
+    impl BatiieTray {
         fn push(&self, a: TrayAction) {
             if let Ok(mut q) = self.queue.lock() {
                 q.push(a);
             }
         }
 
-        fn entry(label: &str, make: fn() -> TrayAction) -> MenuItem<DiosTray> {
+        fn entry(label: &str, make: fn() -> TrayAction) -> MenuItem<BatiieTray> {
             StandardItem {
                 label: label.into(),
-                activate: Box::new(move |t: &mut DiosTray| t.push(make())),
+                activate: Box::new(move |t: &mut BatiieTray| t.push(make())),
                 ..Default::default()
             }
             .into()
         }
     }
 
-    impl ksni::Tray for DiosTray {
+    impl ksni::Tray for BatiieTray {
         fn id(&self) -> String {
-            "dios-downloader".into()
+            "batiie".into()
         }
         fn title(&self) -> String {
-            "DIOS Downloader".into()
+            "Batiie".into()
         }
         fn icon_pixmap(&self) -> Vec<ksni::Icon> {
             self.icon.clone()
         }
         fn tool_tip(&self) -> ksni::ToolTip {
-            ksni::ToolTip { title: "DIOS Downloader".into(), ..Default::default() }
+            ksni::ToolTip { title: "Batiie".into(), ..Default::default() }
         }
         // a click on the icon shows the window (the menu is on the right button)
         fn activate(&mut self, _x: i32, _y: i32) {
@@ -158,7 +158,7 @@ mod imp {
         }
         fn menu(&self) -> Vec<MenuItem<Self>> {
             vec![
-                Self::entry("Restore DIOS Downloader", || TrayAction::Show),
+                Self::entry("Restore Batiie", || TrayAction::Show),
                 MenuItem::Separator,
                 Self::entry("Add new download…", || TrayAction::AddUrl),
                 Self::entry("Resume all downloads", || TrayAction::ResumeAll),
@@ -167,7 +167,7 @@ mod imp {
                 CheckmarkItem {
                     label: "Speed Limiter".into(),
                     checked: self.limiter,
-                    activate: Box::new(|t: &mut DiosTray| t.push(TrayAction::ToggleLimiter)),
+                    activate: Box::new(|t: &mut BatiieTray| t.push(TrayAction::ToggleLimiter)),
                     ..Default::default()
                 }
                 .into(),
@@ -181,7 +181,7 @@ mod imp {
     }
 
     pub struct Tray {
-        handle: Handle<DiosTray>,
+        handle: Handle<BatiieTray>,
         queue: Queue,
         limiter: Cell<bool>,
     }
@@ -189,13 +189,13 @@ mod imp {
     impl Tray {
         pub fn new() -> Option<Tray> {
             // tray32.rgba is RGBA; the StatusNotifierItem wants ARGB32 (network byte order)
-            let rgba = include_bytes!("../ui/tray32.rgba");
+            let rgba = include_bytes!("../assets/img/tray32.rgba");
             let mut argb = Vec::with_capacity(rgba.len());
             for px in rgba.chunks_exact(4) {
                 argb.extend_from_slice(&[px[3], px[0], px[1], px[2]]);
             }
             let queue: Queue = Arc::new(Mutex::new(Vec::new()));
-            let tray = DiosTray {
+            let tray = BatiieTray {
                 queue: queue.clone(),
                 limiter: false,
                 icon: vec![ksni::Icon { width: 32, height: 32, data: argb }],

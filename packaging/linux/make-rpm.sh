@@ -1,34 +1,34 @@
 #!/usr/bin/env bash
-# DIOS Downloader — build an RPM package (.rpm) from a staged Linux build.
+# Batiie — build an RPM package (.rpm) from a staged Linux build.
 #
 # Usage:  ./packaging/linux/make-rpm.sh [stage-dir] [version]
 #
-#   stage-dir   folder with the staged files (default: build-cache/stage-linux/DIOSDownloader,
+#   stage-dir   folder with the staged files (default: build-cache/stage-linux/Batiie,
 #               what build-linux.sh assembles) — same input as make-deb.sh.
 #   version     package version (default: exact git tag, else the Cargo.toml version).
 #
-# Output: dist/dios-downloader-<version>-1.x86_64.rpm
+# Output: dist/batiie-<version>-1.x86_64.rpm
 #
 # Needs the "rpm" tools only (no root):  Debian/Ubuntu:  sudo apt install rpm
 #                                        Fedora:         preinstalled
 #
 # Layout (same idea as the .deb):
-#   /opt/DIOSDownloader/DIOSDownloader        the program
-#   /opt/DIOSDownloader/extension[-firefox]/  browser extensions
-#   /usr/bin/DIOSDownloader                   symlink into /opt (on PATH)
-#   /usr/share/applications/dios-downloader.desktop
-#   /usr/share/icons/hicolor/256x256/apps/dios-downloader.png
+#   /opt/Batiie/Batiie        the program
+#   /opt/Batiie/extension[-firefox]/  browser extensions
+#   /usr/bin/Batiie                   symlink into /opt (on PATH)
+#   /usr/share/applications/batiie.desktop
+#   /usr/share/icons/hicolor/256x256/apps/batiie.png
 set -euo pipefail
 cd "$(dirname "$0")/../.."   # project root
 
 fail() { printf '\033[31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
 command -v rpmbuild >/dev/null 2>&1 || fail "rpmbuild not found — install it with: sudo apt install rpm  (Fedora/openSUSE have it)"
 
-STAGE="${1:-build-cache/stage-linux/DIOSDownloader}"
+STAGE="${1:-build-cache/stage-linux/Batiie}"
 VERSION="${2:-}"
 
 [ -d "$STAGE" ] || fail "stage dir not found: $STAGE (run build-linux.sh first, or pass the folder)"
-[ -f "$STAGE/DIOSDownloader" ] || fail "$STAGE/DIOSDownloader is missing"
+[ -f "$STAGE/Batiie" ] || fail "$STAGE/Batiie is missing"
 
 # ---------------------------------------------------------------- version
 if [ -z "$VERSION" ]; then
@@ -43,7 +43,7 @@ VERSION="${VERSION#v}"
 RPM_VERSION="$(printf '%s' "$VERSION" | sed -e 's/-\(alpha\|beta\|rc\|dev\)/~\1/' -e 's/-/_/g')"
 RELEASE="${RPM_RELEASE:-1}"
 
-echo "==> Building dios-downloader ${RPM_VERSION}-${RELEASE} (x86_64)"
+echo "==> Building batiie ${RPM_VERSION}-${RELEASE} (x86_64)"
 
 # ---------------------------------------------------------------- sandbox
 # Absolute paths everywhere: rpmbuild runs the %install scriptlet from its
@@ -51,35 +51,35 @@ echo "==> Building dios-downloader ${RPM_VERSION}-${RELEASE} (x86_64)"
 # (this is exactly the 'cannot stat build-cache/rpm/payload/.' failure).
 WORK="$PWD/build-cache/rpm"
 rm -rf "$WORK"
-SPEC="$WORK/SPECS/dios-downloader.spec"
+SPEC="$WORK/SPECS/batiie.spec"
 mkdir -p "$WORK"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 
 # ---------------------------------------------------------------- payload
 # rpmbuild packs what the spec's %files list; the tree is staged once
 PAYLOAD="$WORK/payload"
-mkdir -p "$PAYLOAD/opt/DIOSDownloader" "$PAYLOAD/usr/bin" \
+mkdir -p "$PAYLOAD/opt/Batiie" "$PAYLOAD/usr/bin" \
          "$PAYLOAD/usr/share/applications" "$PAYLOAD/usr/share/icons/hicolor/256x256/apps"
-cp "$STAGE/DIOSDownloader" "$PAYLOAD/opt/DIOSDownloader/"
-chmod 755 "$PAYLOAD/opt/DIOSDownloader/DIOSDownloader"
-[ -f "$STAGE/THIRD-PARTY-NOTICES.txt" ] && cp "$STAGE/THIRD-PARTY-NOTICES.txt" "$PAYLOAD/opt/DIOSDownloader/"
-[ -f "$STAGE/dios-downloader.png" ] && cp "$STAGE/dios-downloader.png" "$PAYLOAD/opt/DIOSDownloader/"
+cp "$STAGE/Batiie" "$PAYLOAD/opt/Batiie/"
+chmod 755 "$PAYLOAD/opt/Batiie/Batiie"
+[ -f "$STAGE/THIRD-PARTY-NOTICES.txt" ] && cp "$STAGE/THIRD-PARTY-NOTICES.txt" "$PAYLOAD/opt/Batiie/"
+[ -f "$STAGE/batiie.png" ] && cp "$STAGE/batiie.png" "$PAYLOAD/opt/Batiie/"
 for ext in extension extension-firefox; do
-    [ -d "$STAGE/$ext" ] && cp -r "$STAGE/$ext" "$PAYLOAD/opt/DIOSDownloader/$ext"
+    [ -d "$STAGE/$ext" ] && cp -r "$STAGE/$ext" "$PAYLOAD/opt/Batiie/$ext"
 done
-ls "$STAGE"/dios-downloader-firefox-*.xpi >/dev/null 2>&1 && \
-    cp "$STAGE"/dios-downloader-firefox-*.xpi "$PAYLOAD/opt/DIOSDownloader/" || true
-ln -s ../../opt/DIOSDownloader/DIOSDownloader "$PAYLOAD/usr/bin/DIOSDownloader"
-if [ -f "$STAGE/dios-downloader.desktop" ]; then
-    sed 's|^Exec=.*|Exec=/usr/bin/DIOSDownloader %U|' "$STAGE/dios-downloader.desktop" \
-        > "$PAYLOAD/usr/share/applications/dios-downloader.desktop"
+ls "$STAGE"/batiie-firefox-*.xpi >/dev/null 2>&1 && \
+    cp "$STAGE"/batiie-firefox-*.xpi "$PAYLOAD/opt/Batiie/" || true
+ln -s ../../opt/Batiie/Batiie "$PAYLOAD/usr/bin/Batiie"
+if [ -f "$STAGE/batiie.desktop" ]; then
+    sed 's|^Exec=.*|Exec=/usr/bin/Batiie %U|' "$STAGE/batiie.desktop" \
+        > "$PAYLOAD/usr/share/applications/batiie.desktop"
 fi
-[ -f "$STAGE/dios-downloader.png" ] && cp "$STAGE/dios-downloader.png" \
-    "$PAYLOAD/usr/share/icons/hicolor/256x256/apps/dios-downloader.png"
+[ -f "$STAGE/batiie.png" ] && cp "$STAGE/batiie.png" \
+    "$PAYLOAD/usr/share/icons/hicolor/256x256/apps/batiie.png"
 
 # ---------------------------------------------------------------- spec
 cat > "$SPEC" <<EOF
 %define _topdir $WORK
-Name:           dios-downloader
+Name:           batiie
 Version:        ${RPM_VERSION}
 Release:        ${RELEASE}%{?dist}
 Summary:        Fast download manager with multi-connection downloads
@@ -89,16 +89,19 @@ URL:            https://github.com/OussamaTabDev/DIOS-downloader
 # (no _binary_payload override: the distro default always works, while a
 #  hard-coded zstd setting breaks on rpm builds without zstd support)
 AutoReqProv:    yes
+# the window is a web view
+Requires:       (webkit2gtk4.1 or libwebkit2gtk-4_1-0)
+Requires:       (gtk3 or libgtk-3-0)
 
 %description
-DIOS Downloader downloads files over several connections at once and
+Batiie downloads files over several connections at once and
 resumes interrupted downloads. It stores videos and audio from web
 pages and playlists (yt-dlp), imports .torrent files and magnet links,
 sorts finished files into categories and offers queues, scheduling,
 speed limits and a browser extension.
 
-The browser extensions are under /opt/DIOSDownloader. Settings and
-download lists live in ~/.local/share/dios/DIOSDownloader/data.
+The browser extensions are under /opt/Batiie. Settings and
+download lists live in ~/.local/share/batiie/Batiie/data.
 
 %prep
 # nothing to unpack: the staged tree is copied over directly
@@ -107,10 +110,10 @@ download lists live in ~/.local/share/dios/DIOSDownloader/data.
 cp -a "$PAYLOAD/." "%{buildroot}/"
 
 %files
-/opt/DIOSDownloader
-/usr/bin/DIOSDownloader
-/usr/share/applications/dios-downloader.desktop
-/usr/share/icons/hicolor/256x256/apps/dios-downloader.png
+/opt/Batiie
+/usr/bin/Batiie
+/usr/share/applications/batiie.desktop
+/usr/share/icons/hicolor/256x256/apps/batiie.png
 
 %post
 if command -v update-desktop-database >/dev/null 2>&1; then
@@ -122,7 +125,7 @@ fi
 exit 0
 
 %changelog
-* $(date '+%a %b %d %Y') DIOS Downloader Team <DIOSDownloader@users.noreply.github.com> - ${RPM_VERSION}-${RELEASE}
+* $(date '+%a %b %d %Y') Batiie Team <Batiie@users.noreply.github.com> - ${RPM_VERSION}-${RELEASE}
 - See https://github.com/OussamaTabDev/DIOS-downloader/releases
 EOF
 

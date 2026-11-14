@@ -1,9 +1,9 @@
-name: Build DIOS Downloader
+name: Build Batiie
 
 # Every push: build Windows AND Linux and keep the results as artifacts.
 # A push to main whose commit message contains [release] also publishes a
 # GitHub release v<version> carrying everything:
-#   Windows : DIOSDownloader-Setup.exe + version.json (the in-app updater)
+#   Windows : Batiie-Setup.exe + version.json (the in-app updater)
 #             + the signed Firefox add-on when AMO keys are set
 #   Linux   : tar.gz, .deb, .rpm, .AppImage  (built on ubuntu-22.04 so the
 #             binaries run on Debian 12 / Ubuntu 22.04 and newer)
@@ -41,7 +41,7 @@ jobs:
       - name: Run engine tests
         shell: pwsh
         run: |
-          cargo test -p dios-engine --no-fail-fast 2>&1 | Tee-Object -FilePath tests.txt
+          cargo test -p batiie-engine --no-fail-fast 2>&1 | Tee-Object -FilePath tests.txt
           $code = $LASTEXITCODE
           # failures show up as annotations on the run page
           Select-String -Path tests.txt -Pattern "^error|panicked|FAILED|failures:|^    [a-z_:]+$" |
@@ -77,7 +77,7 @@ jobs:
           # everything for the setup is gathered here; the result is the setup only
           $p = "build-cache/stage"
           New-Item -ItemType Directory -Force "$p/tools", "dist" | Out-Null
-          Copy-Item target/release/DIOSDownloader.exe $p
+          Copy-Item target/release/Batiie.exe $p
           Copy-Item THIRD-PARTY-NOTICES.txt $p
           Copy-Item -Recurse extension "$p/extension"
           Copy-Item -Recurse extension "$p/extension-firefox"
@@ -92,21 +92,21 @@ jobs:
             npx --yes web-ext@8.10.0 sign --channel=unlisted --source-dir "$p/extension-firefox" --artifacts-dir xpi-out --api-key "$env:AMO_JWT_ISSUER" --api-secret "$env:AMO_JWT_SECRET" --approval-timeout 900000
             $xpi = Get-ChildItem xpi-out -Filter *.xpi | Select-Object -First 1
             if ($xpi) {
-              Copy-Item $xpi.FullName "$p/dios-downloader-firefox.xpi"
-              Copy-Item $xpi.FullName "dist/dios-downloader-firefox.xpi"
-              $fx = "{`n  ""addons"": {`n    ""dios-downloader@dios.com"": {`n      ""updates"": [`n        { ""version"": ""$extVersion"", ""update_link"": ""https://github.com/${{ github.repository }}/releases/download/v$version/dios-downloader-firefox.xpi"" }`n      ]`n    }`n  }`n}`n"
+              Copy-Item $xpi.FullName "$p/batiie-firefox.xpi"
+              Copy-Item $xpi.FullName "dist/batiie-firefox.xpi"
+              $fx = "{`n  ""addons"": {`n    ""dios-downloader@dios.com"": {`n      ""updates"": [`n        { ""version"": ""$extVersion"", ""update_link"": ""https://github.com/${{ github.repository }}/releases/download/v$version/batiie-firefox.xpi"" }`n      ]`n    }`n  }`n}`n"
               [IO.File]::WriteAllText("$PWD/dist/firefox-updates.json", $fx)
             } else { Write-Host "::warning::the Firefox add-on was not signed" }
           } elseif ($env:IS_RELEASE -eq "true") { Write-Host "::warning::AMO_JWT_ISSUER / AMO_JWT_SECRET are not set: the Firefox add-on is not signed" }
           # an add-on of this version already signed (by hand on addons.mozilla.org)
           $signed = "extension-signed/dios-downloader-firefox-$extVersion.xpi"
-          if (-not (Test-Path "$p/dios-downloader-firefox.xpi") -and (Test-Path $signed)) {
-            Copy-Item $signed "$p/dios-downloader-firefox.xpi"
-            Copy-Item $signed "dist/dios-downloader-firefox.xpi"
-            $fx = "{`n  ""addons"": {`n    ""dios-downloader@dios.com"": {`n      ""updates"": [`n        { ""version"": ""$extVersion"", ""update_link"": ""https://github.com/${{ github.repository }}/releases/download/v$version/dios-downloader-firefox.xpi"" }`n      ]`n    }`n  }`n}`n"
+          if (-not (Test-Path "$p/batiie-firefox.xpi") -and (Test-Path $signed)) {
+            Copy-Item $signed "$p/batiie-firefox.xpi"
+            Copy-Item $signed "dist/batiie-firefox.xpi"
+            $fx = "{`n  ""addons"": {`n    ""dios-downloader@dios.com"": {`n      ""updates"": [`n        { ""version"": ""$extVersion"", ""update_link"": ""https://github.com/${{ github.repository }}/releases/download/v$version/batiie-firefox.xpi"" }`n      ]`n    }`n  }`n}`n"
             [IO.File]::WriteAllText("$PWD/dist/firefox-updates.json", $fx)
           }
-          $rel = Invoke-RestMethod "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/latest" -Headers @{ "User-Agent" = "DIOSDownloader-ci"; "Authorization" = "Bearer ${{ github.token }}" }
+          $rel = Invoke-RestMethod "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/latest" -Headers @{ "User-Agent" = "Batiie-ci"; "Authorization" = "Bearer ${{ github.token }}" }
           $asset = $rel.assets | Where-Object { $_.name -match '^ffmpeg-n[0-9.]+-latest-win64-gpl-[0-9.]+\.zip$' } |
             Sort-Object { [version](($_.name -replace '^ffmpeg-n([0-9.]+)-.*$', '$1') + '.0') } | Select-Object -Last 1
           Invoke-WebRequest $asset.browser_download_url -OutFile ffmpeg.zip
@@ -126,7 +126,7 @@ jobs:
           $u = $asset.updated_at; if ($u -is [datetime]) { $u = $u.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') }
           "$($asset.name) $u" | Set-Content "$p/tools/ffmpeg-version.txt" -NoNewline
           # yt-dlp of one release, checked against that release's SHA2-256SUMS
-          $yt = Invoke-RestMethod "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest" -Headers @{ "User-Agent" = "DIOSDownloader-ci"; "Authorization" = "Bearer ${{ github.token }}" }
+          $yt = Invoke-RestMethod "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest" -Headers @{ "User-Agent" = "Batiie-ci"; "Authorization" = "Bearer ${{ github.token }}" }
           $ytExe = $yt.assets | Where-Object { $_.name -eq "yt-dlp.exe" } | Select-Object -First 1
           $ytSums = $yt.assets | Where-Object { $_.name -eq "SHA2-256SUMS" } | Select-Object -First 1
           if (-not $ytExe -or -not $ytSums) { throw "the yt-dlp release has no yt-dlp.exe / SHA2-256SUMS" }
@@ -137,28 +137,28 @@ jobs:
           $yGot = (Get-FileHash "$p/tools/yt-dlp.exe" -Algorithm SHA256).Hash
           if (-not $yWant -or $yGot -ne $yWant.ToUpper()) { throw "yt-dlp.exe does not match its published SHA-256" }
           choco install innosetup -y --no-progress
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DMyAppVersion=$version" installer\dios.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DMyAppVersion=$version" installer\batiie.iss
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }
-          $hash = (Get-FileHash dist/DIOSDownloader-Setup.exe -Algorithm SHA256).Hash.ToLower()
+          $hash = (Get-FileHash dist/Batiie-Setup.exe -Algorithm SHA256).Hash.ToLower()
           # the signature the program checks before it installs an update
           $sig = ""
           if ($env:UPDATE_SIGNING_KEY) {
-            $sig = (cargo run --quiet --release -p dios-engine --example sign_update -- $version $hash).Trim()
+            $sig = (cargo run --quiet --release -p batiie-engine --example sign_update -- $version $hash).Trim()
             if ($LASTEXITCODE -ne 0 -or $sig.Length -ne 128) { throw "could not sign the release" }
           } elseif ($env:IS_RELEASE -eq "true") {
             throw "UPDATE_SIGNING_KEY is not set: installed copies would refuse this update"
           }
-          $json = "{`n  ""version"": ""$version"",`n  ""url"": ""https://github.com/${{ github.repository }}/releases/download/v$version/DIOSDownloader-Setup.exe"",`n  ""sha256"": ""$hash"",`n  ""sig"": ""$sig""`n}`n"
+          $json = "{`n  ""version"": ""$version"",`n  ""url"": ""https://github.com/${{ github.repository }}/releases/download/v$version/Batiie-Setup.exe"",`n  ""sha256"": ""$hash"",`n  ""sig"": ""$sig""`n}`n"
           [IO.File]::WriteAllText("$PWD/dist/version.json", $json)
           Get-Content dist/version.json
           # one zip with everything the release will attach from Windows
-          $zipFiles = @("dist/DIOSDownloader-Setup.exe", "dist/version.json")
-          if (Test-Path dist/dios-downloader-firefox.xpi) { $zipFiles += "dist/dios-downloader-firefox.xpi", "dist/firefox-updates.json" }
-          Compress-Archive -Path $zipFiles -DestinationPath DIOSDownloader-windows.zip -Force
+          $zipFiles = @("dist/Batiie-Setup.exe", "dist/version.json")
+          if (Test-Path dist/batiie-firefox.xpi) { $zipFiles += "dist/batiie-firefox.xpi", "dist/firefox-updates.json" }
+          Compress-Archive -Path $zipFiles -DestinationPath Batiie-windows.zip -Force
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: DIOSDownloader-windows
-          path: DIOSDownloader-windows.zip
+          name: Batiie-windows
+          path: Batiie-windows.zip
 
   # --------------------------------------------------------------------- Linux
   linux:
@@ -170,8 +170,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev \
-            libwayland-dev libxcb1-dev pkg-config rpm
+            libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev \\
+            libayatana-appindicator3-dev librsvg2-dev libssl-dev pkg-config rpm
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           toolchain: stable
@@ -184,7 +184,7 @@ jobs:
           ./build-linux.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: DIOSDownloader-linux
+          name: Batiie-linux
           path: |
             dist/*.tar.gz
             dist/*.deb
@@ -214,8 +214,8 @@ jobs:
         run: |
           set -e
           mkdir -p dist
-          unzip -j -o "artifacts/DIOSDownloader-windows/DIOSDownloader-windows.zip" -d dist
-          cp -f artifacts/DIOSDownloader-linux/* dist/
+          unzip -j -o "artifacts/Batiie-windows/Batiie-windows.zip" -d dist
+          cp -f artifacts/Batiie-linux/* dist/
           cd dist
           find . -maxdepth 1 -type f ! -name 'SHA256SUMS' -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS
           cat SHA256SUMS
@@ -230,17 +230,17 @@ jobs:
             exit 0
           fi
           cat > release-notes.md <<EOF
-          DIOS Downloader $VERSION
+          Batiie $VERSION
 
-          - Windows: DIOSDownloader-Setup.exe (installs for the current user)
-          - Debian/Ubuntu: sudo apt install ./dios-downloader_*_amd64.deb
-          - Fedora/openSUSE: sudo dnf install ./dios-downloader-*.x86_64.rpm
-          - Any Linux (x64): run DIOSDownloader-*.x86_64.AppImage, or unpack the tar.gz and run install.sh
+          - Windows: Batiie-Setup.exe (installs for the current user)
+          - Debian/Ubuntu: sudo apt install ./batiie_*_amd64.deb
+          - Fedora/openSUSE: sudo dnf install ./batiie-*.x86_64.rpm
+          - Any Linux (x64): run Batiie-*.x86_64.AppImage, or unpack the tar.gz and run install.sh
           - SHA256SUMS lists the hash of every file
           EOF
           gh release create "v$VERSION" dist/* \
             --repo "${{ github.repository }}" --target "${{ github.sha }}" \
-            --title "DIOS Downloader $VERSION" \
+            --title "Batiie $VERSION" \
             --notes-file release-notes.md --latest
           # only the newest release stays: older ones (and their tags) go
           tags="$(gh release list --repo "${{ github.repository }}" --limit 100 --json tagName -q '.[].tagName')"

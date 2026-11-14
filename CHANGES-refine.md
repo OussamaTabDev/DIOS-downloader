@@ -1,7 +1,7 @@
-# DIOS Downloader – refinement notes
+# Batiie – refinement notes
 
 Performance
-- Software renderer by default (windows open without creating a GPU context each). `DIOS_GPU=1` restores the GPU renderer.
+- Software renderer by default (windows open without creating a GPU context each). `BATIIE_GPU=1` restores the GPU renderer.
 - Windows: autostart is read/written through the registry API (no reg.exe on the UI thread).
 
 Windows & tray
@@ -10,9 +10,9 @@ Windows & tray
 - Linux tray (StatusNotifierItem via ksni). No tray host -> Hide minimizes, close quits.
 - Tray click restores the main window and hidden download windows.
 
-Browsers (Help > Add DIOS Downloader to my browser)
+Browsers (Help > Add Batiie to my browser)
 - Dynamic detection: PATH, Snap, Flatpak, /opt, .desktop web browsers, default browser first; Windows registry (StartMenuInternet, App Paths).
-- "Other browser" card with manual steps. Extension folder also looked up in ~/.local/share/dios-downloader (install.sh fills it).
+- "Other browser" card with manual steps. Extension folder also looked up in ~/.local/share/batiie (install.sh fills it).
 
 UI & shortcuts
 - Menu shortcuts (Ctrl+N/B/J/Q/R/P/O, F2, F1, F9, Ctrl+K, Ctrl+, ...), list navigation (arrows, PgUp/PgDn, Home/End, Space), Esc closes dialogs.
@@ -34,7 +34,7 @@ Fixed / added
   .torrent file. It is now forwarded to the running instance (POST /torrent on the local API) and opens "Add torrent".
 - Linux: the .desktop file gets %U and MimeType (application/x-bittorrent, x-scheme-handler/magnet); the deb and rpm
   scripts no longer strip %U when they rewrite Exec=.
-- Windows installer: optional task "Open .torrent files and magnet links with DIOS Downloader".
+- Windows installer: optional task "Open .torrent files and magnet links with Batiie".
 
 Performance
 - A download's view no longer carries the login cookies (copied for every download 4 times a second);

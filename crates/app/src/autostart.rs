@@ -10,7 +10,7 @@ mod imp {
     };
 
     const KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
-    const NAME: &str = "DIOSDownloader";
+    const NAME: &str = "Batiie";
 
     fn wide(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
@@ -29,9 +29,22 @@ mod imp {
         exists(KEY, NAME)
     }
 
+    /// The program used to be "DIOS Downloader": its "start with Windows" entry becomes ours.
+    pub fn migrate_old_name() {
+        const OLD: &str = "DIOS Downloader";
+        if exists(KEY, OLD) {
+            let (key, old) = (wide(KEY), wide(OLD));
+            // SAFETY: NUL-terminated wide strings
+            unsafe {
+                RegDeleteKeyValueW(HKEY_CURRENT_USER, key.as_ptr(), old.as_ptr());
+            }
+            set(true);
+        }
+    }
+
     /// Installed with the setup program (which asked about autostart itself).
     pub fn installed_by_setup() -> bool {
-        exists(r"Software\DIOS\DIOSDownloader", "Installed")
+        exists(r"Software\Batiie\Batiie", "Installed")
     }
 
     pub fn set(enabled: bool) -> bool {
@@ -55,7 +68,7 @@ mod imp {
     use std::fs;
     use std::path::PathBuf;
 
-    const FILE: &str = "dios-downloader.desktop";
+    const FILE: &str = "batiie.desktop";
 
     fn desktop_path() -> Option<PathBuf> {
         let dir = std::env::var_os("XDG_CONFIG_HOME")
@@ -68,7 +81,7 @@ mod imp {
     fn desktop_entry() -> Option<String> {
         let exe = std::env::current_exe().ok()?;
         Some(format!(
-            "[Desktop Entry]\nType=Application\nVersion=1.0\nName=DIOS Downloader\nComment=DIOS Downloader in the background\nExec=\"{}\" --background\nTerminal=false\nX-GNOME-Autostart-enabled=true\n",
+            "[Desktop Entry]\nType=Application\nVersion=1.0\nName=Batiie\nComment=Batiie in the background\nExec=\"{}\" --background\nTerminal=false\nX-GNOME-Autostart-enabled=true\n",
             exe.display()
         ))
     }
@@ -81,6 +94,17 @@ mod imp {
 
     pub fn installed_by_setup() -> bool {
         false
+    }
+
+    /// The program used to be "DIOS Downloader": its autostart file becomes ours.
+    pub fn migrate_old_name() {
+        if let Some(dir) = desktop_path() {
+            let old = dir.join("dios-downloader.desktop");
+            if old.exists() {
+                let _ = fs::remove_file(old);
+                set(true);
+            }
+        }
     }
 
     pub fn set(enabled: bool) -> bool {
@@ -101,4 +125,4 @@ mod imp {
     }
 }
 
-pub use imp::{installed_by_setup, is_enabled, set};
+pub use imp::{installed_by_setup, is_enabled, migrate_old_name, set};

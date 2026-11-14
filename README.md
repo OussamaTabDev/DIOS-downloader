@@ -1,6 +1,6 @@
 <div align="center">
 
-# DIOS Downloader
+# Batiie
 
 **A fast, honest download manager for Windows and Linux — written in Rust.**
 
@@ -43,7 +43,7 @@ queues and scheduling — in one clean desktop app, in 8 languages.
 
 ## About
 
-**DIOS Downloader** is a desktop download manager written from scratch in **Rust** — a fast engine (`dios-engine`) plus a native **Slint** interface (`dios-app`). It downloads the files you point it at, splits each file across up to **32 connections**, and picks up exactly where it left off after an interruption, a pause, or even a full restart of the program.
+**Batiie** is a desktop download manager written from scratch in **Rust** — a fast engine (`batiie-engine`) plus an interface built with **[htmx](https://htmx.org)**: the program runs a tiny web server that only listens to your own computer and shows its pages in a native window (WebView2 on Windows, WebKitGTK on Linux). It downloads the files you point it at, splits each file across up to **32 connections**, and picks up exactly where it left off after an interruption, a pause, or even a full restart of the program.
 
 It runs on **Windows 10/11** and on **64-bit Linux** (X11 and Wayland), saves video and audio from thousands of sites through **yt-dlp + FFmpeg**, integrates with **Chrome, Edge and Firefox** through a browser add-on, and speaks **eight languages**: العربية, English, Français, Español, Deutsch, Português, Türkçe, Русский.
 
@@ -58,14 +58,14 @@ It does **one job** — getting files onto your disk quickly and reliably — an
 
 > This project did not start here, and it is important to say so plainly.
 
-**DIOS Downloader is a direct continuation of *Ezoo Download***, a download manager **originally created and developed by [ORIGINAL AUTHOR NAME → put the person's name here]** ([profile / original repository link → put the link here]).
+**Batiie is a direct continuation of *Ezoo Download***, a download manager **originally created and developed by [ORIGINAL AUTHOR NAME → put the person's name here]** ([profile / original repository link → put the link here]).
 
 - The original author designed, built and released **Ezoo Download versions 1.0.0 – 1.0.5** — the entire engine, the browser add-on, the update system and the initial interface. **All credit for the original work belongs to them.**
-- This repository continues that work under a new name: at **v1.1.0** the project was renamed **DIOS Downloader**, received a redesigned interface, native Linux packages (`.deb` / `.rpm` / `.AppImage`), automated GitHub builds and releases, and a fresh release-signing key. The original codebase and its MIT license were carried over intact.
+- This repository continues that work under a new name: at **v1.1.0** the project was renamed **Batiaa**, received a redesigned interface, native Linux packages (`.deb` / `.rpm` / `.AppImage`), automated GitHub builds and releases, and a fresh release-signing key. At **v2.0.0** it was renamed again, to **Batiie**. The original codebase and its MIT license were carried over intact.
 - The MIT license of the original project is preserved, including its original copyright notice — see [License](#license).
 - **If you are the original author** and would like anything adjusted here — the credit wording, a link to your current project, or anything else — please open an issue. It will be handled promptly and in good faith.
 
-Renaming an existing project without saying where it came from would be dishonest. This section exists so that anyone who finds DIOS Downloader knows exactly where it came from and whom to thank.
+Renaming an existing project without saying where it came from would be dishonest. This section exists so that anyone who finds Batiie knows exactly where it came from and whom to thank.
 
 ---
 
@@ -75,7 +75,7 @@ Renaming an existing project without saying where it came from would be dishones
 |---|---|---|
 | 🔀 | **Multi-connection downloads** | Every file is split across up to **32 connections** at once, with per-connection progress — big files finish dramatically faster |
 | ⏯️ | **Pause & resume** | Pause any download and continue later — even after closing the program or rebooting |
-| 🌐 | **Browser add-on** | Click a download in Chrome, Edge or Firefox and it is handed to DIOS Downloader, cookies included — links that need a login just work |
+| 🌐 | **Browser add-on** | Click a download in Chrome, Edge or Firefox and it is handed to Batiie, cookies included — links that need a login just work |
 | 🎬 | **Video & audio** | Save video or audio from pages and whole **playlists** via **yt-dlp**, with **quality selection** (resolution, format), muxed together by **FFmpeg** |
 | 📋 | **Clipboard & paste** | Copy a link anywhere and the program offers to download it; **Ctrl+V** fills the add dialog directly |
 | 🖱️ | **Drag files out** | On Windows, drag a finished download straight from the list onto the desktop or into any folder |
@@ -106,7 +106,7 @@ All installers are published on the repository's **[Releases](https://github.com
 
 ### Windows 10 / 11
 
-1. Download **`DIOSDownloader-Setup.exe`** from the latest release.
+1. Download **`Batiie-Setup.exe`** from the latest release.
 2. Run it. The program installs **for your user only** — no administrator rights needed.
 3. Start it from the Start menu.
 
@@ -117,18 +117,18 @@ All installers are published on the repository's **[Releases](https://github.com
 
 | Package | Install | Remove |
 |---|---|---|
-| **`.deb`** (Ubuntu/Debian/Mint) | `sudo apt install ./dios-downloader_<version>_amd64.deb` | `sudo apt remove dios-downloader` |
-| **`.rpm`** (Fedora/openSUSE) | `sudo dnf install ./dios-downloader-<version>-1.x86_64.rpm` | `sudo dnf remove dios-downloader` |
-| **`.AppImage`** (any distro) | `chmod +x DIOSDownloader-<version>-x86_64.AppImage` then run it | delete the file |
-| **`.tar.gz`** (portable, no root) | `tar -xzf DIOSDownloader-<version>-linux-x64.tar.gz && ./DIOSDownloader/install.sh` | `rm ~/.local/bin/DIOSDownloader` |
+| **`.deb`** (Ubuntu/Debian/Mint) | `sudo apt install ./batiie_<version>_amd64.deb` | `sudo apt remove batiie` |
+| **`.rpm`** (Fedora/openSUSE) | `sudo dnf install ./batiie-<version>-1.x86_64.rpm` | `sudo dnf remove batiie` |
+| **`.AppImage`** (any distro) | `chmod +x Batiie-<version>-x86_64.AppImage` then run it | delete the file |
+| **`.tar.gz`** (portable, no root) | `tar -xzf Batiie-<version>-linux-x64.tar.gz && ./Batiie/install.sh` | `rm ~/.local/bin/Batiie` |
 
 Details worth knowing:
 
-- The `.deb` and `.rpm` install the program to **`/opt/DIOSDownloader`**, add a **`DIOSDownloader`** command to your `PATH`, a menu entry, and an icon — everything updates normally with your package manager.
-- The **AppImage** runs anywhere without installation. It is built to run even without FUSE; if your system refuses to open it, either install `libfuse2` or run it with `./DIOSDownloader-….AppImage --appimage-extract-and-run`.
-- The **tar.gz** contains an `install.sh` that installs to `~/.local` (menu entry + icon included) plus the browser extensions folder — no root required. You can also just run `./DIOSDownloader` straight from the extracted folder.
+- The `.deb` and `.rpm` install the program to **`/opt/Batiie`**, add a **`Batiie`** command to your `PATH`, a menu entry, and an icon — everything updates normally with your package manager.
+- The **AppImage** runs anywhere without installation. It is built to run even without FUSE; if your system refuses to open it, either install `libfuse2` or run it with `./Batiie-….AppImage --appimage-extract-and-run`.
+- The **tar.gz** contains an `install.sh` that installs to `~/.local` (menu entry + icon included) plus the browser extensions folder — no root required. You can also just run `./Batiie` straight from the extracted folder.
 - On first use the program downloads **yt-dlp** and **FFmpeg** by itself from their official GitHub releases and verifies their **SHA-256** checksums; it keeps them current from then on. Nothing needs to be installed by hand.
-- Standard desktop libraries are expected (libxkbcommon, libfontconfig, X11 or Wayland client libraries, xdg-desktop-portal for file dialogs). They are preinstalled on virtually every desktop distribution.
+- The window is a web view: **WebView2** (already part of Windows 10/11) or **WebKitGTK 4.1** on Linux (`libwebkit2gtk-4.1-0` + `libgtk-3-0`; preinstalled on most desktops), plus xdg-desktop-portal for file dialogs. Without them the program opens its interface in your default browser instead.
 
 ### System requirements
 
@@ -143,7 +143,7 @@ Details worth knowing:
 1. **Add a link** — paste it with **Ctrl+V**, use the **Add** button, or just copy a link anywhere and let the program notice it.
 2. **Pick the folder and quality** — the default folder is offered automatically; for videos, choose the resolution you want.
 3. **Let it run** — progress appears in the main window with per-connection detail; finished files land in their type-matched folder.
-4. **(Recommended) install the browser add-on** — from the program: **Help → Add DIOS Downloader to my browser** and follow the steps for your browser. Downloads started in the browser then arrive in the program automatically, with login cookies attached.
+4. **(Recommended) install the browser add-on** — from the program: **Help → Add Batiie to my browser** and follow the steps for your browser. Downloads started in the browser then arrive in the program automatically, with login cookies attached.
 5. **Explore Options** — speed limits, queues, scheduler, auto-shutdown, language, clipboard monitoring, autostart, tray behavior.
 
 ---
@@ -154,7 +154,7 @@ The add-on (shipped for **Chrome/Edge** and **Firefox**) connects to the program
 
 What it sends, and nothing more: the URL you clicked, the cookies and page URL of that specific download (so logged-in links work), and its own heartbeat. Everything stays on your machine — the program never uploads anything anywhere except the downloads you ask for.
 
-Install it from inside the program (**Help → Add DIOS Downloader to my browser**):
+Install it from inside the program (**Help → Add Batiie to my browser**):
 
 - **Chrome / Edge**: load the unpacked `extension/` folder in `chrome://extensions` with developer mode on, or run the native-host installer the program offers.
 - **Firefox**: install the bundled `.xpi` when present; on releases with Mozilla signing keys the add-on is **signed by Mozilla** and installs permanently, otherwise it loads as a temporary add-on via `about:debugging`.
@@ -163,13 +163,13 @@ Install it from inside the program (**Help → Add DIOS Downloader to my browser
 
 ## Build from source
 
-The project is a Cargo workspace with two crates: `crates/engine` (the download engine, no UI) and `crates/app` (the Slint program).
+The project is a Cargo workspace with two crates: `crates/engine` (the download engine, no UI) and `crates/app` (the program: the htmx interface). The previous Slint interface is kept in `legacy/slint-app`.
 
 ### Prerequisites
 
 - **Rust** (stable) — <https://rustup.rs>
 - **Git** and a C toolchain (`build-essential` on Debian/Ubuntu, Xcode CLT / MSVC on Windows)
-- Linux desktop dev libraries: `sudo apt install libxkbcommon-dev libfontconfig1-dev` (equivalents on other distros)
+- Linux desktop dev libraries: `sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev pkg-config` (equivalents on other distros)
 - **Windows only**: [Inno Setup 6](https://jrsoftware.org/isinfo.php) if you want to build the installer
 - **Linux only**: `rpm` (`sudo apt install rpm`) if you want to build the `.rpm` on a Debian-based machine
 
@@ -182,10 +182,10 @@ The project is a Cargo workspace with two crates: `crates/engine` (the download 
 The script installs Rust if missing, runs `cargo build --release`, and produces **all four packages** in `dist/`:
 
 ```
-dist/DIOSDownloader-<version>-linux-x64.tar.gz
-dist/dios-downloader_<version>_amd64.deb
-dist/dios-downloader-<version>-1.x86_64.rpm
-dist/DIOSDownloader-<version>-x86_64.AppImage
+dist/Batiie-<version>-linux-x64.tar.gz
+dist/batiie_<version>_amd64.deb
+dist/batiie-<version>-1.x86_64.rpm
+dist/Batiie-<version>-x86_64.AppImage
 ```
 
 The individual packagers live in `packaging/linux/` (`make-deb.sh`, `make-rpm.sh`, `make-appimage.sh`) and can also be run on their own after `cargo build --release`.
@@ -197,12 +197,12 @@ BUILD.bat                                        # quick build
 powershell -ExecutionPolicy Bypass -File build-windows.ps1   # full build + installer
 ```
 
-The setup appears as `dist/DIOSDownloader-Setup.exe`.
+The setup appears as `dist/Batiie-Setup.exe`.
 
 ### Tests
 
 ```bash
-cargo test -p dios-engine            # engine: downloads, HLS, resume, update verification…
+cargo test -p batiie-engine            # engine: downloads, HLS, resume, update verification…
 node extension/test/yt-core.test.js  # browser add-on logic
 node extension/test/background.sim.js
 ```
@@ -243,7 +243,7 @@ gh run list --limit 5                  # see recent runs
 gh run watch                           # follow the newest run live
 ```
 
-When the run is green, download **`DIOSDownloader-windows`** and **`DIOSDownloader-linux`** from the run's *Artifacts* section.
+When the run is green, download **`Batiie-windows`** and **`Batiie-linux`** from the run's *Artifacts* section.
 
 ### 3. Publishing a release
 
@@ -251,25 +251,25 @@ A release is created **only** when a push to `main` carries **`[release]`** in t
 
 ```bash
 # 1) bump the version once — every crate inherits it
-sed -i 's/^version = ".*"/version = "1.2.0"/' Cargo.toml
+sed -i 's/^version = ".*"/version = "2.0.0"/' Cargo.toml
 
 # 2) commit and push; the word [release] is the trigger
 git add -A
-git commit -m "DIOS Downloader 1.2.0 [release]"
+git commit -m "Batiie 2.0.0 [release]"
 git push origin main
 ```
 
-The `publish` job creates release **`v1.2.0`** with:
+The `publish` job creates release **`v2.0.0`** with:
 
 ```
-DIOSDownloader-Setup.exe                Windows installer
+Batiie-Setup.exe                Windows installer
 version.json                            signed update manifest
-dios-downloader-firefox.xpi             (when AMO keys are set)
+batiie-firefox.xpi             (when AMO keys are set)
 firefox-updates.json                    add-on self-update manifest
-DIOSDownloader-<v>-linux-x64.tar.gz     Linux portable
-dios-downloader_<v>_amd64.deb           Debian/Ubuntu
-dios-downloader-<v>-1.x86_64.rpm        Fedora/openSUSE
-DIOSDownloader-<v>-x86_64.AppImage      run-anywhere
+Batiie-<v>-linux-x64.tar.gz     Linux portable
+batiie_<v>_amd64.deb           Debian/Ubuntu
+batiie-<v>-1.x86_64.rpm        Fedora/openSUSE
+Batiie-<v>-x86_64.AppImage      run-anywhere
 SHA256SUMS                              checksums of every file
 ```
 
@@ -309,7 +309,7 @@ For full transparency — here is everything the program does on its own:
 | 🍪 **Cookies** | The add-on sends cookies only for the file you clicked, over the local connection; they are stored in the program's data folder in plain text |
 | 📋 **Clipboard** | Watches for copied links and offers them; can be turned off in Options |
 | 🚀 **Autostart** | Optional; `Run` registry value on Windows, an autostart `.desktop` entry on Linux |
-| 💾 **Data location** | `%APPDATA%\DIOS\DIOSDownloader\data` (Windows) · `~/.local/share/dios/DIOSDownloader/data` (Linux) — settings, download lists, credentials, tools |
+| 💾 **Data location** | `%APPDATA%\Batiie\Batiie\data` (Windows) · `~/.local/share/batiie/Batiie/data` (Linux) — settings, download lists, credentials, tools |
 | 🤫 **Telemetry** | **None.** No analytics, no crash reporting, no statistics, no accounts, no requests to anything except the downloads you ask for and the update/tool sources above |
 
 ---
@@ -321,7 +321,7 @@ The installer is not code-signed yet. Click *More info → Run anyway*, or verif
 
 **Q: `could not start yt-dlp: Permission denied (os error 13)`.**
 The yt-dlp binary exists but cannot be executed. Usual causes and fixes:
-- it lost its executable bit — restore it: `chmod +x ~/.local/share/dios/DIOSDownloader/data/tools/yt-dlp` (Linux);
+- it lost its executable bit — restore it: `chmod +x ~/.local/share/batiie/Batiie/data/tools/yt-dlp` (Linux);
 - the bundled `tools` folder sits somewhere read-only or owned by root — the app automatically falls back to the data folder above and re-downloads there; deleting the stale `tools` folder forces a clean re-fetch;
 - antivirus/EDR is blocking unsigned binaries — whitelist the file.
 
@@ -329,7 +329,7 @@ The yt-dlp binary exists but cannot be executed. Usual causes and fixes:
 Your system lacks FUSE. Either install `libfuse2` (Debian/Ubuntu: `sudo apt install libfuse2`) or run it with `--appimage-extract-and-run`, which the shipped AppImage supports out of the box.
 
 **Q: The browser add-on cannot connect.**
-Make sure the program is running (check the tray). The add-on talks to `127.0.0.1:9614` — if you changed the port in settings, re-install the add-on from **Help → Add DIOS Downloader to my browser** so it picks up the new port. Corporate proxies/VPN tools that intercept localhost traffic can also break the link.
+Make sure the program is running (check the tray). The add-on talks to `127.0.0.1:9614` — if you changed the port in settings, re-install the add-on from **Help → Add Batiie to my browser** so it picks up the new port. Corporate proxies/VPN tools that intercept localhost traffic can also break the link.
 
 **Q: A download needs a login and fails in the program.**
 Use the browser add-on: it forwards the site's cookies automatically. Or download while logged in from the browser and let the add-on catch it.
@@ -360,10 +360,13 @@ Open an [issue](https://github.com/OussamaTabDev/DIOS-downloader/issues) with yo
 │  ├─ engine/             the engine: multi-connection downloads, resume, HLS,
 │  │                      scheduling, grabber, yt-dlp integration, selfupdate
 │  │                      (examples/sign_update.rs — the release signing tool)
-│  └─ app/                the program (Slint UI)
-│     ├─ ui/              window definitions
-│     ├─ lang/            UI translations (8 languages)
-│     └─ src/             windows logic, tray, add-on bridge, options
+│  └─ app/                the program (htmx interface)
+│     ├─ assets/web/      htmx + its extensions, app.css, app.js (embedded in the program)
+│     ├─ lang/            UI translations (8 languages, .po + .json)
+│     └─ src/             main.rs, shell.rs (native window), state.rs, api.rs (add-on bridge),
+│        └─ web/          the server: page.rs (main window), add.rs, batch.rs, progress.rs,
+│                         settings.rs, sched.rs, torrent.rs, grab.rs, playlist.rs, info.rs, …
+├─ legacy/slint-app/      the previous Slint interface (kept for reference; builds on its own)
 ├─ extension/             browser add-on (Chrome/Edge + Firefox manifests, tests)
 ├─ assets/                logo, .desktop file
 ├─ packaging/linux/       make-deb.sh · make-rpm.sh · make-appimage.sh
@@ -380,7 +383,8 @@ Open an [issue](https://github.com/OussamaTabDev/DIOS-downloader/issues) with yo
 
 | Version | Date | Notes |
 |---|---|---|
-| **1.1.0** | 2026-10 | Renamed **Ezoo Download → DIOS Downloader** with a new logo; redesigned, IDM-style interface; Linux packaging (`.deb`/`.rpm`/`.AppImage`/tar.gz); automated GitHub builds & signed releases; fresh update-signing key |
+| **2.0.0** | 2026-11 | Renamed **Batiaa → Batiie** (program, crates, installer, packages, add-on branding); everything else carried over unchanged |
+| **1.1.0** | 2026-10 | Renamed **Ezoo Download → Batiaa** with a new logo; redesigned, IDM-style interface; Linux packaging (`.deb`/`.rpm`/`.AppImage`/tar.gz); automated GitHub builds & signed releases; fresh update-signing key |
 | 1.0.5 | 2026-10 | *Ezoo Download* — original project, see the origin section above |
 | 1.0.0 – 1.0.4 | 2026-10 | *Ezoo Download* — initial development by the original author |
 
@@ -391,7 +395,7 @@ Open an [issue](https://github.com/OussamaTabDev/DIOS-downloader/issues) with yo
 The project carries the **MIT license**, inherited unchanged from Ezoo Download:
 
 - **Copyright (c) 2026 [ORIGINAL AUTHOR NAME]** — for Ezoo Download, the original project
-- **Copyright (c) 2026 DIOS Downloader Team** — for the changes made since v1.1.0
+- **Copyright (c) 2026 Batiie Team** — for the changes made since v1.1.0
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, subject to the following conditions: the above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
@@ -401,7 +405,8 @@ Open-source components the program ships with — full text in `THIRD-PARTY-NOTI
 
 | Component | Role | License |
 |---|---|---|
-| [Slint](https://slint.dev) | User interface toolkit | Slint Royalty-free Desktop, Mobile & Web License 2.0 |
+| [htmx](https://htmx.org) (+ SSE and idiomorph extensions) | Interface: HTML over the wire | BSD 0-Clause / BSD 2-Clause |
+| [axum](https://github.com/tokio-rs/axum), [maud](https://maud.lambda.xyz), [wry](https://github.com/tauri-apps/wry) / [tao](https://github.com/tauri-apps/tao) | Local server, HTML templates, native web view window | MIT / Apache-2.0 |
 | [yt-dlp](https://github.com/yt-dlp/yt-dlp) | Video/audio extraction | The Unlicense (public domain) |
 | [FFmpeg](https://github.com/FFmpeg/FFmpeg) | Muxing/transcoding | GPL-3.0 — unmodified build from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds); its license text ships next to the binary |
 | Rust crates (tokio, reqwest, serde, ring, …) | Engine internals | MIT / Apache-2.0 |
@@ -413,11 +418,11 @@ Open-source components the program ships with — full text in `THIRD-PARTY-NOTI
 - **[ORIGINAL AUTHOR NAME]** — for creating Ezoo Download, the project this repository continues
 - The **[yt-dlp](https://github.com/yt-dlp/yt-dlp)** team — the video-download backbone
 - The **[FFmpeg](https://ffmpeg.org)** project and **[BtbN](https://github.com/BtbN/FFmpeg-Builds)** for the builds
-- The **[Slint](https://slint.dev)** team for the UI toolkit
+- The **[htmx](https://htmx.org)** and **[Tauri (wry/tao)](https://tauri.app)** teams for the interface stack
 - The Rust community, whose crates do half the heavy lifting
 
 <div align="center">
 
-**DIOS Downloader Team** · © 2026 · [Download the latest release](https://github.com/OussamaTabDev/DIOS-downloader/releases/latest)
+**Batiie Team** · © 2026 · [Download the latest release](https://github.com/OussamaTabDev/DIOS-downloader/releases/latest)
 
 </div>

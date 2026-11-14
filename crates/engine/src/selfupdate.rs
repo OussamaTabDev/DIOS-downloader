@@ -1,9 +1,9 @@
-//! New versions of DIOS Downloader itself.
+//! New versions of Batiie itself.
 //!
 //! Every release on GitHub carries two files:
 //!
-//! * `DIOSDownloader-Setup.exe` – the installer
-//! * `version.json`           – `{"version":"1.0.1","url":"…/DIOSDownloader-Setup.exe","sha256":"…"}`
+//! * `Batiie-Setup.exe` – the installer
+//! * `version.json`           – `{"version":"1.0.1","url":"…/Batiie-Setup.exe","sha256":"…"}`
 //!
 //! The app reads `version.json` of the latest release, and when the version
 //! there is higher than its own it downloads the installer, checks that its
@@ -20,7 +20,7 @@ use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
 pub const REPO: &str = "OussamaTabDev/DIOS-downloader";
-pub const SETUP_NAME: &str = "DIOSDownloader-Setup.exe";
+pub const SETUP_NAME: &str = "Batiie-Setup.exe";
 
 pub fn version_url() -> String {
     format!("https://github.com/{REPO}/releases/latest/download/version.json")
@@ -121,7 +121,7 @@ pub fn parse(text: &str) -> anyhow::Result<Release> {
 pub fn parse_signed(text: &str) -> anyhow::Result<Release> {
     let r = parse(text)?;
     if !signature_ok(&r, UPDATE_PUBLIC_KEY) {
-        anyhow::bail!("the update is not signed by DIOS Downloader, so it is not installed");
+        anyhow::bail!("the update is not signed by Batiie, so it is not installed");
     }
     Ok(r)
 }
@@ -181,7 +181,7 @@ pub async fn download_with_progress(
     progress: &(dyn Fn(u64, Option<u64>) + Send + Sync),
 ) -> anyhow::Result<PathBuf> {
     std::fs::create_dir_all(dir)?;
-    let dest = dir.join(format!("DIOSDownloader-Setup-{}.exe", r.version.trim_start_matches('v')));
+    let dest = dir.join(format!("Batiie-Setup-{}.exe", r.version.trim_start_matches('v')));
     if dest.exists() {
         if file_sha256(&dest)?.eq_ignore_ascii_case(&r.sha256) {
             return Ok(dest);
@@ -313,7 +313,7 @@ mod tests {
 
     #[test]
     fn installer_checked_again_before_it_runs() {
-        let dir = std::env::temp_dir().join(format!("dios-su-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("batiie-su-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let f = dir.join("setup.exe");
         std::fs::write(&f, b"changed").unwrap();

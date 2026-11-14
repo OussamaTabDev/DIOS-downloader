@@ -1,14 +1,14 @@
-// DIOS Downloader browser integration (Manifest V3 service worker)
-//  1. takes over browser downloads and hands them to the DIOS Downloader app
+// Batiie browser integration (Manifest V3 service worker)
+//  1. takes over browser downloads and hands them to the Batiie app
 //     together with cookies + referrer, so links behind a login still work
 //  2. watches network responses for video/audio and HLS streams and offers
 //     a "Download this video" button on the page
 //  3. Videos on web pages: the app finds the qualities with yt-dlp,
 //     downloads video + audio with many connections and joins them
-//  4. adds "Download with DIOS Downloader", "Download all links with DIOS
-//     Download" and "Download video with DIOS Downloader" to the right-click menu
+//  4. adds "Download with Batiie", "Download all links with Batiie
+//     Download" and "Download video with Batiie" to the right-click menu
 //  5. follows the app's Options: file types to take, sites to leave alone,
-//     the keys that skip / force DIOS Downloader, the video panel
+//     the keys that skip / force Batiie, the video panel
 
 // Chrome / Edge / Opera load yt-core.js here; Firefox lists it in its manifest
 if (typeof importScripts === "function") importScripts("yt-core.js");
@@ -43,7 +43,7 @@ async function followAppVersion() {
   await chrome.storage.session.set({ versionCheckAt: Date.now() });
   const { port } = await getOpts();
   try {
-    const r = await fetchWithTimeout(apiUrl(port, "/ping"), { headers: { "X-DIOS": "1" } }, 800);
+    const r = await fetchWithTimeout(apiUrl(port, "/ping"), { headers: { "X-Batiie": "1" } }, 800);
     if (!r.ok || typeof r.json !== "function") return;
     const want = (await r.json()).ext;
     const have = chrome.runtime.getManifest().version;
@@ -63,7 +63,7 @@ followAppVersion();
 async function appAlive() {
   const { port } = await getOpts();
   try {
-    const r = await fetchWithTimeout(apiUrl(port, "/ping"), { headers: { "X-DIOS": "1" } }, 800);
+    const r = await fetchWithTimeout(apiUrl(port, "/ping"), { headers: { "X-Batiie": "1" } }, 800);
     if (r.ok) followAppVersion();
     return r.ok;
   } catch {
@@ -122,12 +122,12 @@ async function sendToApp({ url, audioUrl, referrer, fileName, headers, sourcePag
     apiUrl(port, "/add"),
     {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-DIOS": "1" },
+      headers: { "Content-Type": "application/json", "X-Batiie": "1" },
       body: JSON.stringify(body),
     },
     3000
   );
-  if (!r.ok) throw new Error(`DIOS Downloader answered HTTP ${r.status}`);
+  if (!r.ok) throw new Error(`Batiie answered HTTP ${r.status}`);
 }
 
 // ---------------------------------------------------------------- app options
@@ -140,7 +140,7 @@ async function getConfig() {
   if (appConfig && Date.now() - configAt < 60000) return appConfig;
   const { port } = await getOpts();
   try {
-    const r = await fetchWithTimeout(apiUrl(port, "/config"), { headers: { "X-DIOS": "1" } }, 1000);
+    const r = await fetchWithTimeout(apiUrl(port, "/config"), { headers: { "X-Batiie": "1" } }, 1000);
     if (r.ok) {
       appConfig = await r.json();
       configAt = Date.now();
@@ -173,7 +173,7 @@ function extensionOf(name) {
   return dot > 0 ? last.slice(dot + 1).toLowerCase() : "";
 }
 
-/** Should DIOS Downloader take this browser download? (Options > File Types rules) */
+/** Should Batiie take this browser download? (Options > File Types rules) */
 function wanted(cfg, url, fileName, mime, keys) {
   if (!cfg) return true; // old app: take everything like before
   if (cfg.skipKey && cfg.skipKey !== "none" && keys[cfg.skipKey]) return false;
@@ -250,7 +250,7 @@ async function appSaysBrowser(urls) {
   try {
     const r = await fetchWithTimeout(
       apiUrl(port, "/browser"),
-      { method: "POST", headers: { "Content-Type": "application/json", "X-DIOS": "1" }, body: JSON.stringify({ urls }) },
+      { method: "POST", headers: { "Content-Type": "application/json", "X-Batiie": "1" }, body: JSON.stringify({ urls }) },
       800
     );
     if (!r.ok || typeof r.json !== "function") return false;
@@ -348,8 +348,8 @@ async function itemsForTab(tabId) {
           items.push({ label: "Can't get this video", sub: yt.resolveError, disabled: true });
         } else if (yt.sabr) {
           items.push({
-            label: "This video needs DIOS Downloader",
-            sub: "Open DIOS Downloader (with yt-dlp.exe next to it) and reload the page",
+            label: "This video needs Batiie",
+            sub: "Open Batiie (with yt-dlp.exe next to it) and reload the page",
             disabled: true,
           });
         }
@@ -507,7 +507,7 @@ async function askApp(page) {
     apiUrl(port, "/resolve"),
     {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-DIOS": "1" },
+      headers: { "Content-Type": "application/json", "X-Batiie": "1" },
       body: JSON.stringify({ url: page, cookieList: await cookieList(page) }),
     },
     90000
@@ -540,7 +540,7 @@ async function resolveYoutube(tabId, pageUrl) {
   try {
     change = await askApp(`https://www.youtube.com/watch?v=${videoId}`);
   } catch (e) {
-    change = { resolveError: (await appAlive()) ? String((e && e.message) || e) : "DIOS Downloader is not running" };
+    change = { resolveError: (await appAlive()) ? String((e && e.message) || e) : "Batiie is not running" };
   } finally {
     if (resolving.get(tabId) === videoId) resolving.delete(tabId);
   }
@@ -567,7 +567,7 @@ async function resolvePage(tabId, page) {
   try {
     change = await askApp(page);
   } catch (e) {
-    change = { resolveError: (await appAlive()) ? String((e && e.message) || e) : "DIOS Downloader is not running" };
+    change = { resolveError: (await appAlive()) ? String((e && e.message) || e) : "Batiie is not running" };
   } finally {
     if (resolving.get(tabId) === page) resolving.delete(tabId);
   }
@@ -591,7 +591,7 @@ async function resolveOneVideo(msg, tab) {
       if (r.resolved && r.resolved.options.length) items.unshift(...optionItems(r.resolved, page));
       else if (!items.length) return { error: r.resolveError || "Can't get this video" };
     } catch (e) {
-      if (!items.length) return { error: (await appAlive()) ? String((e && e.message) || e) : "DIOS Downloader is not running" };
+      if (!items.length) return { error: (await appAlive()) ? String((e && e.message) || e) : "Batiie is not running" };
     }
   }
   return items.length ? { items } : { error: "Can't get this video" };
@@ -620,25 +620,25 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 function makeMenus() {
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: "dios-link", title: "Download with DIOS Downloader", contexts: ["link"] });
+    chrome.contextMenus.create({ id: "dios-link", title: "Download with Batiie", contexts: ["link"] });
     chrome.contextMenus.create({
       id: "dios-media",
-      title: "Download this media with DIOS Downloader",
+      title: "Download this media with Batiie",
       contexts: ["video", "audio", "image"],
     });
     chrome.contextMenus.create({
       id: "dios-video",
-      title: "Download video with DIOS Downloader",
+      title: "Download video with Batiie",
       contexts: ["page", "video", "frame"],
     });
     chrome.contextMenus.create({
       id: "dios-all",
-      title: "Download all links with DIOS Downloader",
+      title: "Download all links with Batiie",
       contexts: ["page", "frame", "link", "image"],
     });
     chrome.contextMenus.create({
       id: "dios-selected",
-      title: "Download selected links with DIOS Downloader",
+      title: "Download selected links with Batiie",
       contexts: ["selection"],
     });
   });
@@ -655,7 +655,7 @@ async function sendAllLinks(tab, selection) {
     apiUrl(port, "/links"),
     {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-DIOS": "1" },
+      headers: { "Content-Type": "application/json", "X-Batiie": "1" },
       body: JSON.stringify({
         page: res.page || tab.url,
         links: res.links,
@@ -669,7 +669,7 @@ async function sendAllLinks(tab, selection) {
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "dios-all" || info.menuItemId === "dios-selected") {
-    if (tab) sendAllLinks(tab, info.menuItemId === "dios-selected").catch((e) => console.warn("DIOS Downloader:", e));
+    if (tab) sendAllLinks(tab, info.menuItemId === "dios-selected").catch((e) => console.warn("Batiie:", e));
     return;
   }
   if (info.menuItemId === "dios-video") {
@@ -683,7 +683,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
   const url = info.linkUrl || info.srcUrl;
   if (!url || !/^https?:/i.test(url)) return;
-  sendToApp({ url, referrer: info.pageUrl }).catch((e) => console.warn("DIOS Downloader:", e));
+  sendToApp({ url, referrer: info.pageUrl }).catch((e) => console.warn("Batiie:", e));
 });
 
 // ---------------------------------------------------------------- messages from page/popup

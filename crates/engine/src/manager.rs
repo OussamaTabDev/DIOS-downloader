@@ -93,15 +93,50 @@ pub struct Manager {
 }
 
 /// Default place for settings.json and downloads.json
-/// (%APPDATA%\DIOS\DIOSDownloader\data on Windows, ~/.local/share/dios on
-/// Linux). DIOS Downloader starts with a fresh data folder and does not
-/// import settings from any earlier product.
+/// (%APPDATA%\Batiie\Batiie\data on Windows, ~/.local/share/batiie on Linux).
+///
+/// The program used to be called "DIOS Downloader" and kept its data in another folder. On the
+/// first start under the new name that folder is carried over (moved when possible, otherwise
+/// copied and left in place), so settings, queues, logins and the download list survive.
 pub fn default_data_dir() -> PathBuf {
-    let dir = directories::ProjectDirs::from("com", "DIOS", "DIOSDownloader")
+    let dir = directories::ProjectDirs::from("com", "Batiie", "Batiie")
         .map(|p| p.data_dir().to_path_buf())
-        .unwrap_or_else(|| PathBuf::from("dios-data"));
+        .unwrap_or_else(|| PathBuf::from("batiie-data"));
+    if !dir.join("settings.json").exists() && !dir.join("downloads.json").exists() {
+        if let Some(old) = directories::ProjectDirs::from("com", "DIOS", "DIOSDownloader").map(|p| p.data_dir().to_path_buf()) {
+            if old != dir && (old.join("settings.json").exists() || old.join("downloads.json").exists()) {
+                carry_over(&old, &dir);
+            }
+        }
+    }
     let _ = std::fs::create_dir_all(&dir);
     dir
+}
+
+/// Old data folder -> new one: a rename when both are on one disk, else a copy.
+fn carry_over(old: &std::path::Path, new: &std::path::Path) {
+    if let Some(parent) = new.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    // an empty folder that was made before is in the way of a rename
+    let _ = std::fs::remove_dir(new);
+    if std::fs::rename(old, new).is_ok() {
+        return;
+    }
+    fn copy_dir(from: &std::path::Path, to: &std::path::Path) -> std::io::Result<()> {
+        std::fs::create_dir_all(to)?;
+        for e in std::fs::read_dir(from)? {
+            let e = e?;
+            let (src, dst) = (e.path(), to.join(e.file_name()));
+            if e.file_type()?.is_dir() {
+                copy_dir(&src, &dst)?;
+            } else {
+                std::fs::copy(&src, &dst)?;
+            }
+        }
+        Ok(())
+    }
+    let _ = copy_dir(old, new);
 }
 
 impl Manager {
@@ -330,7 +365,7 @@ impl Manager {
         let mut rec = rec;
         if early {
             // parts get a fixed name in a fixed folder: name and folder can still change
-            rec.work_stem = Some(format!(".dios-{id}"));
+            rec.work_stem = Some(format!(".batiie-{id}"));
             if rec.temp_dir.is_none() {
                 rec.temp_dir = Some(rec.save_dir.clone());
             }
@@ -2193,5 +2228,22 @@ mod name_tests {
         assert_eq!(playlist_stem("How to cook rice", "طريقة عمل الأرز"), "طريقة عمل الأرز");
         assert_eq!(playlist_stem("2024 plans", "Plans"), "Plans");
         assert_eq!(playlist_stem("07 - Old", "  "), "07 - Old");
+    }
+}
+
+
+#[cfg(test)]
+mod rename_tests {
+    #[test]
+    fn data_folder_is_carried_over() {
+        let base = std::env::temp_dir().join(format!("batiie-carry-{}", std::process::id()));
+        let (old, new) = (base.join("old"), base.join("new").join("data"));
+        std::fs::create_dir_all(old.join("sub")).unwrap();
+        std::fs::write(old.join("settings.json"), "{}").unwrap();
+        std::fs::write(old.join("sub").join("x.txt"), "x").unwrap();
+        super::carry_over(&old, &new);
+        assert!(new.join("settings.json").exists());
+        assert!(new.join("sub").join("x.txt").exists());
+        let _ = std::fs::remove_dir_all(&base);
     }
 }
